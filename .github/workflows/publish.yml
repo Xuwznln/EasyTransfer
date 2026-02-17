@@ -83,7 +83,7 @@ jobs:
         if: github.event_name == 'release' && (github.event.action == 'published' || (github.event.action == 'edited' && !github.event.release.prerelease))
         run: |
           pip install -e .
-          VERSION=$(python -c "import easytransfer; print(easytransfer.__version__)")
+          VERSION=$(python -c "import etransfer; print(etransfer.__version__)")
           RAW_TAG="${GITHUB_REF#refs/tags/}"
           if [[ "$RAW_TAG" == v* ]]; then
             TAG_VERSION="${RAW_TAG#v}"

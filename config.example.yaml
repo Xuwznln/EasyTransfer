@@ -56,7 +56,7 @@ user_system:
   oidc:
     issuer_url: "https://your-oidc-provider.example.com"
     client_id: "your-client-id"
-    client_secret: ""     # Keep secret! Use env EASYTRANSFER_OIDC_CLIENT_SECRET
+    client_secret: ""     # Keep secret! Use env ETRANSFER_OIDC_CLIENT_SECRET
     # callback_url: Leave empty or set to your public URL.
     # When empty/localhost, EasyTransfer auto-derives the callback from the
     # incoming request's Host header (works for SSH remote access).
@@ -73,9 +73,9 @@ user_system:
     # mysql:
     #   host: 127.0.0.1
     #   port: 3306
-    #   user: easytransfer
-    #   password: ""      # Use env EASYTRANSFER_MYSQL_PASSWORD
-    #   database: easytransfer
+    #   user: etransfer
+    #   password: ""      # Use env ETRANSFER_MYSQL_PASSWORD
+    #   database: etransfer
 
   # Per-role quota defaults
   # Users get the most permissive quota from their role AND groups

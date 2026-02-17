@@ -23,9 +23,9 @@ import hashlib
 import json
 import os
 import sys
-import time
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -72,6 +72,7 @@ def banner(title):
 
 def get_http(server_url, token):
     import httpx
+
     return httpx.Client(
         base_url=server_url,
         headers={"X-API-Token": token},
@@ -89,29 +90,33 @@ class QuotaResumeTest:
         self.results = {}
 
         # Test parameters
-        self.quota_size = 15 * 1024 * 1024       # 15MB quota
-        self.file1_size = 10 * 1024 * 1024        # 10MB file (fills 10/15)
-        self.file2_size = 10 * 1024 * 1024        # 10MB file (needs 10 more, only 5 avail)
-        self.chunk_size = 2 * 1024 * 1024          # 2MB chunks
+        self.quota_size = 15 * 1024 * 1024  # 15MB quota
+        self.file1_size = 10 * 1024 * 1024  # 10MB file (fills 10/15)
+        self.file2_size = 10 * 1024 * 1024  # 10MB file (needs 10 more, only 5 avail)
+        self.chunk_size = 2 * 1024 * 1024  # 2MB chunks
 
     def _start_local_server(self):
         """Start a local server with quota configured."""
         import subprocess
 
         env = os.environ.copy()
-        env["EASYTRANSFER_AUTH_TOKENS"] = json.dumps([self.token])
-        env["EASYTRANSFER_STATE_BACKEND"] = "file"
-        env["EASYTRANSFER_MAX_STORAGE_SIZE"] = str(self.quota_size)
+        env["ETRANSFER_AUTH_TOKENS"] = json.dumps([self.token])
+        env["ETRANSFER_STATE_BACKEND"] = "file"
+        env["ETRANSFER_MAX_STORAGE_SIZE"] = str(self.quota_size)
         # Use a fresh temp storage to avoid quota from old files
         self._storage_dir = tempfile.mkdtemp(prefix="et_quota_test_")
-        env["EASYTRANSFER_STORAGE_PATH"] = self._storage_dir
+        env["ETRANSFER_STORAGE_PATH"] = self._storage_dir
 
         self.server_process = subprocess.Popen(
             [
-                sys.executable, "-m", "uvicorn",
-                "easytransfer.server.main:app",
-                "--host", "0.0.0.0",
-                "--port", "8766",  # Use different port to avoid conflict
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "etransfer.server.main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8766",  # Use different port to avoid conflict
             ],
             env=env,
             stdout=subprocess.PIPE,
@@ -122,6 +127,7 @@ class QuotaResumeTest:
         # Wait for startup
         self.server_url = "http://127.0.0.1:8766"
         import httpx
+
         for i in range(30):
             try:
                 r = httpx.get(f"{self.server_url}/api/health", timeout=2.0)
@@ -141,8 +147,9 @@ class QuotaResumeTest:
             print(f"  Server stopped")
 
         # Cleanup storage
-        if hasattr(self, '_storage_dir') and os.path.exists(self._storage_dir):
+        if hasattr(self, "_storage_dir") and os.path.exists(self._storage_dir):
             import shutil
+
             shutil.rmtree(self._storage_dir, ignore_errors=True)
 
     # ─── TESTS ──────────────────────────────────────────────────────────
@@ -158,9 +165,7 @@ class QuotaResumeTest:
             print(f"  Used: {info['used_formatted']}")
             print(f"  Available: {info['available_formatted']}")
             print(f"  Can accept uploads: {info['can_accept_uploads']}")
-            assert info["max"] == self.quota_size, (
-                f"Expected quota {self.quota_size}, got {info['max']}"
-            )
+            assert info["max"] == self.quota_size, f"Expected quota {self.quota_size}, got {info['max']}"
             assert info["can_accept_uploads"], "Server should accept uploads initially"
         print("  PASSED")
         self.results["check_quota"] = True
@@ -168,7 +173,7 @@ class QuotaResumeTest:
     def test_1_upload_first_file(self, test_file1):
         """Upload first file that fits within quota."""
         banner("TEST 1: Upload First File (within quota)")
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
 
         client = EasyTransferClient(self.server_url, token=self.token)
         uploader = client.create_uploader(test_file1, chunk_size=self.chunk_size)
@@ -185,8 +190,7 @@ class QuotaResumeTest:
         with get_http(self.server_url, self.token) as http:
             r = http.get("/api/storage")
             info = r.json()
-            print(f"  Storage: {info['used_formatted']} / {info['max_formatted']} "
-                  f"({info['usage_percent']}%)")
+            print(f"  Storage: {info['used_formatted']} / {info['max_formatted']} " f"({info['usage_percent']}%)")
             print(f"  Available: {info['available_formatted']}")
 
         print("  PASSED")
@@ -198,7 +202,7 @@ class QuotaResumeTest:
         """Upload second file: hits quota, waits, resumes after cleanup."""
         banner("TEST 2: Upload Hits Quota -> Poll -> Cleanup -> Resume")
 
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
 
         quota_events = []
         resume_event = threading.Event()
@@ -208,8 +212,9 @@ class QuotaResumeTest:
             quota_events.append(storage_info)
             used = storage_info.get("used_formatted", "?")
             avail = storage_info.get("available_formatted", "?")
-            print(f"    [Quota Wait] Storage: {used} used, {avail} available, "
-                  f"waiting... (poll #{len(quota_events)})")
+            print(
+                f"    [Quota Wait] Storage: {used} used, {avail} available, " f"waiting... (poll #{len(quota_events)})"
+            )
 
         def cleanup_after_delay():
             """Simulate a downloader taking the file after some time."""
@@ -220,8 +225,7 @@ class QuotaResumeTest:
                 print(f"    [Cleanup] Delete response: {r.status_code}")
                 r = http.get("/api/storage")
                 info = r.json()
-                print(f"    [Cleanup] Storage after delete: "
-                      f"{info['used_formatted']} / {info['max_formatted']}")
+                print(f"    [Cleanup] Storage after delete: " f"{info['used_formatted']} / {info['max_formatted']}")
             resume_event.set()
 
         # Start cleanup thread (simulates "取出" after a delay)
@@ -246,8 +250,7 @@ class QuotaResumeTest:
 
         file_id = url.rstrip("/").split("/")[-1]
 
-        print(f"\n  Upload completed in {elapsed:.1f}s (including {len(quota_events)} "
-              f"quota waits)")
+        print(f"\n  Upload completed in {elapsed:.1f}s (including {len(quota_events)} " f"quota waits)")
         print(f"  File ID: {file_id}")
 
         # Verify the file is complete
@@ -300,7 +303,7 @@ class QuotaResumeTest:
         """Simulate client crash/restart, then resume."""
         banner("TEST 4: Resume After Client 'Crash' & Restart")
 
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
 
         # Upload 40% then "crash"
         client1 = EasyTransferClient(self.server_url, token=self.token)
@@ -332,6 +335,7 @@ class QuotaResumeTest:
 
         # Verify integrity
         import httpx
+
         with httpx.stream(
             "GET",
             f"{self.server_url}/api/files/{file_id}/download",

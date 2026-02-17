@@ -1,2 +1,1 @@
 """EasyTransfer tests."""
-

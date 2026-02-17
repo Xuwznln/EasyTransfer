@@ -5,15 +5,15 @@ EasyTransfer 客户端演示脚本
 演示上传、下载、缓存策略功能。
 """
 
+import hashlib
 import os
 import sys
 import tempfile
-import hashlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from easytransfer.common.constants import DEFAULT_SERVER_PORT
+from etransfer.common.constants import DEFAULT_SERVER_PORT
 
 
 def generate_test_file(path: Path, size_mb: int = 10) -> str:
@@ -34,10 +34,9 @@ def generate_test_file(path: Path, size_mb: int = 10) -> str:
     return md5.hexdigest()
 
 
-def demo_upload(server_url: str, token: str, file_path: Path,
-                retention: str = None, retention_ttl: int = None):
+def demo_upload(server_url: str, token: str, file_path: Path, retention: str = None, retention_ttl: int = None):
     """演示上传。"""
-    from easytransfer.client.tus_client import EasyTransferClient
+    from etransfer.client.tus_client import EasyTransferClient
 
     print(f"\n=== 上传演示 ===")
     print(f"文件: {file_path}")
@@ -69,7 +68,7 @@ def demo_upload(server_url: str, token: str, file_path: Path,
 
 def demo_download(server_url: str, token: str, file_id: str, output_dir: Path):
     """演示下载。"""
-    from easytransfer.client.downloader import ChunkDownloader
+    from etransfer.client.downloader import ChunkDownloader
 
     print(f"\n=== 下载演示 ===")
     print(f"File ID: {file_id}")
@@ -104,7 +103,7 @@ def demo_download(server_url: str, token: str, file_id: str, output_dir: Path):
 
 def demo_list_files(server_url: str, token: str):
     """演示列出文件。"""
-    from easytransfer.client.tus_client import EasyTransferClient
+    from etransfer.client.tus_client import EasyTransferClient
 
     print(f"\n=== 文件列表 ===")
 
@@ -125,13 +124,12 @@ def demo_list_files(server_url: str, token: str):
             "download_once": " [阅后即焚]",
             "ttl": " [定时过期]",
         }.get(retention, "")
-        print(f"  - {f.file_id[:8]}... | {f.filename} | "
-              f"{f.size / 1024 / 1024:.1f} MB | {status}{retention_label}")
+        print(f"  - {f.file_id[:8]}... | {f.filename} | " f"{f.size / 1024 / 1024:.1f} MB | {status}{retention_label}")
 
 
 def demo_server_info(server_url: str, token: str):
     """演示获取服务器信息。"""
-    from easytransfer.client.tus_client import EasyTransferClient
+    from etransfer.client.tus_client import EasyTransferClient
 
     print(f"\n=== 服务器信息 ===")
 
@@ -176,6 +174,7 @@ def demo_retention(server_url: str, token: str, tmpdir: Path):
         success, _ = demo_download(server_url, token, file_id, tmpdir)
         if success:
             import time
+
             time.sleep(1)
             print("  尝试第二次下载 (应该失败)...")
             try:
@@ -206,27 +205,32 @@ def main():
 
     parser = argparse.ArgumentParser(description="EasyTransfer 客户端演示")
     parser.add_argument(
-        "--server", "-s",
+        "--server",
+        "-s",
         default=f"http://localhost:{DEFAULT_SERVER_PORT}",
         help="服务器地址",
     )
     parser.add_argument(
-        "--token", "-t",
+        "--token",
+        "-t",
         default="test-token-12345",
         help="API Token",
     )
     parser.add_argument(
-        "--action", "-a",
+        "--action",
+        "-a",
         choices=["upload", "download", "list", "info", "retention", "full"],
         default="full",
         help="执行的操作",
     )
     parser.add_argument(
-        "--file", "-f",
+        "--file",
+        "-f",
         help="要上传的文件路径",
     )
     parser.add_argument(
-        "--file-id", "-i",
+        "--file-id",
+        "-i",
         help="要下载的文件 ID",
     )
     parser.add_argument(
@@ -236,7 +240,8 @@ def main():
         help="生成测试文件的大小 (MB)",
     )
     parser.add_argument(
-        "--retention", "-r",
+        "--retention",
+        "-r",
         choices=["permanent", "download_once", "ttl"],
         default=None,
         help="上传时指定缓存策略",
@@ -267,11 +272,10 @@ def main():
             file_path = Path(args.file)
         else:
             # 生成测试文件
-            file_path = Path(tempfile.gettempdir()) / "easytransfer_test.bin"
+            file_path = Path(tempfile.gettempdir()) / "etransfer_test.bin"
             generate_test_file(file_path, args.size)
 
-        demo_upload(args.server, args.token, file_path,
-                    retention=args.retention, retention_ttl=args.retention_ttl)
+        demo_upload(args.server, args.token, file_path, retention=args.retention, retention_ttl=args.retention_ttl)
 
     elif args.action == "download":
         if not args.file_id:
@@ -303,9 +307,7 @@ def main():
                 demo_list_files(args.server, args.token)
 
                 # 下载
-                success, output_path = demo_download(
-                    args.server, args.token, file_id, tmpdir
-                )
+                success, output_path = demo_download(args.server, args.token, file_id, tmpdir)
 
                 if success:
                     # 验证哈希

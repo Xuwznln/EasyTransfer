@@ -106,14 +106,18 @@ class HotReloadTest:
         self._write_config(self._initial_config())
 
         env = os.environ.copy()
-        env["EASYTRANSFER_CONFIG"] = str(self.config_path)
+        env["ETRANSFER_CONFIG"] = str(self.config_path)
 
         self.server_process = subprocess.Popen(
             [
-                sys.executable, "-m", "uvicorn",
-                "easytransfer.server.main:app",
-                "--host", "0.0.0.0",
-                "--port", str(PORT),
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "etransfer.server.main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                str(PORT),
             ],
             env=env,
             stdout=subprocess.PIPE,
@@ -163,6 +167,7 @@ class HotReloadTest:
             self.results[name] = False
             fail(f"EXCEPTION: {e}")
             import traceback
+
             traceback.print_exc()
 
     # ── Tests ─────────────────────────────────────────────────
@@ -224,7 +229,8 @@ class HotReloadTest:
             ok("TOKEN_V2 correctly rejected before reload")
 
         # Update config to add TOKEN_V2
-        self._write_config(f"""\
+        self._write_config(
+            f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -243,7 +249,8 @@ class HotReloadTest:
             network:
               advertised_endpoints:
                 - "10.0.0.1"
-        """)
+        """
+        )
 
         # Trigger reload using TOKEN_V1
         with self._http(TOKEN_V1) as h:
@@ -265,7 +272,8 @@ class HotReloadTest:
         banner("TEST 5: Hot-Reload Storage Quota")
 
         # Update config to change quota
-        self._write_config(f"""\
+        self._write_config(
+            f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -284,7 +292,8 @@ class HotReloadTest:
             network:
               advertised_endpoints:
                 - "10.0.0.1"
-        """)
+        """
+        )
 
         with self._http() as h:
             r = h.post("/api/admin/reload-config")
@@ -304,7 +313,8 @@ class HotReloadTest:
         """Change default retention policy via hot-reload."""
         banner("TEST 6: Hot-Reload Retention Policy")
 
-        self._write_config(f"""\
+        self._write_config(
+            f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -324,7 +334,8 @@ class HotReloadTest:
             network:
               advertised_endpoints:
                 - "10.0.0.1"
-        """)
+        """
+        )
 
         with self._http() as h:
             r = h.post("/api/admin/reload-config")
@@ -339,7 +350,8 @@ class HotReloadTest:
         """Change advertised endpoints via hot-reload."""
         banner("TEST 7: Hot-Reload Advertised Endpoints")
 
-        self._write_config(f"""\
+        self._write_config(
+            f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -361,7 +373,8 @@ class HotReloadTest:
                 - "10.0.0.1"
                 - "10.0.0.2"
                 - "10.0.0.3"
-        """)
+        """
+        )
 
         with self._http() as h:
             r = h.post("/api/admin/reload-config")
@@ -384,7 +397,8 @@ class HotReloadTest:
         banner("TEST 8: Static Fields Remain Unchanged")
 
         # Change port in config (static — should not take effect)
-        self._write_config(f"""\
+        self._write_config(
+            f"""\
             server:
               host: 0.0.0.0
               port: 9999
@@ -405,7 +419,8 @@ class HotReloadTest:
                 - "10.0.0.1"
                 - "10.0.0.2"
                 - "10.0.0.3"
-        """)
+        """
+        )
 
         with self._http() as h:
             r = h.post("/api/admin/reload-config")
@@ -452,7 +467,8 @@ class HotReloadTest:
         banner("TEST 10: Reload With Token Replacement")
 
         # Config with only TOKEN_V3 (removing V1 and V2)
-        self._write_config(f"""\
+        self._write_config(
+            f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -470,7 +486,8 @@ class HotReloadTest:
             network:
               advertised_endpoints:
                 - "10.0.0.1"
-        """)
+        """
+        )
 
         # Use TOKEN_V2 to trigger reload (it will remove itself)
         with self._http(TOKEN_V2) as h:
@@ -528,14 +545,18 @@ class HotReloadTest:
         banner("TEST 12: CLI 'et server reload' Command")
 
         env = os.environ.copy()
-        env["EASYTRANSFER_CONFIG"] = str(self.config_path)
+        env["ETRANSFER_CONFIG"] = str(self.config_path)
 
         result = subprocess.run(
             [
-                sys.executable, "-m", "easytransfer.client.cli",
-                "server", "reload",
+                sys.executable,
+                "-m",
+                "etransfer.client.cli",
+                "server",
+                "reload",
                 f"127.0.0.1:{PORT}",
-                "--token", TOKEN_V3,
+                "--token",
+                TOKEN_V3,
             ],
             capture_output=True,
             text=True,
@@ -552,11 +573,12 @@ class HotReloadTest:
         ok("CLI command succeeded (exit code 0)")
 
         # The output should mention "No changes" or "Reloaded"
-        assert ("changes" in result.stdout.lower()
-                or "no changes" in result.stdout.lower()
-                or "reloaded" in result.stdout.lower()
-                or "unchanged" in result.stdout.lower()), \
-            f"Unexpected output: {result.stdout[:300]}"
+        assert (
+            "changes" in result.stdout.lower()
+            or "no changes" in result.stdout.lower()
+            or "reloaded" in result.stdout.lower()
+            or "unchanged" in result.stdout.lower()
+        ), f"Unexpected output: {result.stdout[:300]}"
         ok("CLI output contains expected reload info")
 
     def test_13_cli_reload_reads_yaml_token(self):
@@ -564,13 +586,16 @@ class HotReloadTest:
         banner("TEST 13: CLI Reads Token From Config YAML")
 
         env = os.environ.copy()
-        env["EASYTRANSFER_CONFIG"] = str(self.config_path)
+        env["ETRANSFER_CONFIG"] = str(self.config_path)
 
         # No --token flag, should auto-read from config YAML
         result = subprocess.run(
             [
-                sys.executable, "-m", "easytransfer.client.cli",
-                "server", "reload",
+                sys.executable,
+                "-m",
+                "etransfer.client.cli",
+                "server",
+                "reload",
             ],
             capture_output=True,
             text=True,
@@ -584,8 +609,7 @@ class HotReloadTest:
             print(f"  stderr: {result.stderr[:200]}")
 
         assert result.returncode == 0, (
-            f"CLI returned {result.returncode}. "
-            f"Output: {result.stdout[:200]} {result.stderr[:200]}"
+            f"CLI returned {result.returncode}. " f"Output: {result.stdout[:200]} {result.stderr[:200]}"
         )
         ok("CLI auto-read token from YAML and succeeded")
 
@@ -644,9 +668,9 @@ class HotReloadTest:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Config hot-reload integration test")
-    parser.add_argument("--keep-server", action="store_true",
-                        help="Don't stop server after tests")
+    parser.add_argument("--keep-server", action="store_true", help="Don't stop server after tests")
     args = parser.parse_args()
 
     test = HotReloadTest()

@@ -122,27 +122,27 @@ echo -e "  Token: $API_TOKEN"
 echo -e "  缓存策略: $DEFAULT_RETENTION"
 
 # 设置环境变量
-export EASYTRANSFER_STORAGE_PATH="$STORAGE_PATH"
-export EASYTRANSFER_STATE_BACKEND="$STATE_BACKEND"
-export EASYTRANSFER_REDIS_URL="$REDIS_URL"
-export EASYTRANSFER_AUTH_ENABLED="true"
-export EASYTRANSFER_AUTH_TOKENS="[\"$API_TOKEN\"]"
-export EASYTRANSFER_DEFAULT_RETENTION="$DEFAULT_RETENTION"
+export ETRANSFER_STORAGE_PATH="$STORAGE_PATH"
+export ETRANSFER_STATE_BACKEND="$STATE_BACKEND"
+export ETRANSFER_REDIS_URL="$REDIS_URL"
+export ETRANSFER_AUTH_ENABLED="true"
+export ETRANSFER_AUTH_TOKENS="[\"$API_TOKEN\"]"
+export ETRANSFER_DEFAULT_RETENTION="$DEFAULT_RETENTION"
 
 if [ -n "$MAX_STORAGE" ]; then
-    export EASYTRANSFER_MAX_STORAGE_SIZE="$MAX_STORAGE"
+    export ETRANSFER_MAX_STORAGE_SIZE="$MAX_STORAGE"
     echo -e "  存储限额: $MAX_STORAGE"
 fi
 
 if [ "$USER_SYSTEM" = "true" ]; then
-    export EASYTRANSFER_USER_SYSTEM_ENABLED="true"
-    export EASYTRANSFER_USER_DB_PATH="$STORAGE_PATH/users.db"
+    export ETRANSFER_USER_SYSTEM_ENABLED="true"
+    export ETRANSFER_USER_DB_PATH="$STORAGE_PATH/users.db"
     echo -e "  用户系统: ${GREEN}已启用${NC}"
     if [ -n "$OIDC_ISSUER" ]; then
-        export EASYTRANSFER_OIDC_ISSUER_URL="$OIDC_ISSUER"
-        export EASYTRANSFER_OIDC_CLIENT_ID="$OIDC_CLIENT_ID"
-        export EASYTRANSFER_OIDC_CLIENT_SECRET="$OIDC_CLIENT_SEC"
-        export EASYTRANSFER_OIDC_CALLBACK_URL="http://localhost:$SERVER_PORT/api/users/callback"
+        export ETRANSFER_OIDC_ISSUER_URL="$OIDC_ISSUER"
+        export ETRANSFER_OIDC_CLIENT_ID="$OIDC_CLIENT_ID"
+        export ETRANSFER_OIDC_CLIENT_SECRET="$OIDC_CLIENT_SEC"
+        export ETRANSFER_OIDC_CALLBACK_URL="http://localhost:$SERVER_PORT/api/users/callback"
         echo -e "  OIDC Issuer: $OIDC_ISSUER"
     fi
 fi
@@ -158,7 +158,7 @@ echo -e "  缓存策略: $DEFAULT_RETENTION"
 echo -e "\n按 Ctrl+C 停止服务端\n"
 
 # 启动
-python -m uvicorn easytransfer.server.main:app \
+python -m uvicorn etransfer.server.main:app \
     --host 0.0.0.0 \
     --port "$SERVER_PORT" \
     --reload

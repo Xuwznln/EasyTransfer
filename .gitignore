@@ -41,7 +41,7 @@ Thumbs.db
 
 # EasyTransfer runtime data
 storage/
-.easytransfer/
+.etransfer/
 *.log
 
 # Environment

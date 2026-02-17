@@ -24,8 +24,8 @@ import os
 import signal
 import subprocess
 import sys
-import time
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -84,17 +84,19 @@ class RetentionTester:
 
     def _api_get(self, path, **kwargs):
         import httpx
+
         url = f"{self.server_url}{path}"
         return httpx.get(url, headers=self._headers(), timeout=30.0, **kwargs)
 
     def _api_delete(self, path):
         import httpx
+
         url = f"{self.server_url}{path}"
         return httpx.delete(url, headers=self._headers(), timeout=30.0)
 
     def upload_file(self, file_path, retention=None, retention_ttl=None):
         """Upload a file using EasyTransferClient with specified retention."""
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
 
         client = EasyTransferClient(
             server_url=self.server_url,
@@ -121,6 +123,7 @@ class RetentionTester:
     def download_file(self, file_id, dest_path):
         """Download a file and return response headers."""
         import httpx
+
         url = f"{self.server_url}/api/files/{file_id}/download"
         with httpx.stream("GET", url, headers=self._headers(), timeout=60.0) as resp:
             resp_headers = dict(resp.headers)
@@ -132,37 +135,36 @@ class RetentionTester:
     def start_server(self, extra_env=None):
         """Start a local test server."""
         env = os.environ.copy()
-        env.update({
-            "EASYTRANSFER_PORT": "8765",
-            "EASYTRANSFER_STATE_BACKEND": "memory",
-            "EASYTRANSFER_AUTH_TOKENS": json.dumps(
-                [DEFAULT_TOKEN, "admin-token", "ephemeral-token"]
-            ),
-            "EASYTRANSFER_STORAGE_PATH": tempfile.mkdtemp(prefix="et_retention_"),
-            # Set default retention to permanent
-            "EASYTRANSFER_DEFAULT_RETENTION": "permanent",
-            # Set per-token policies
-            "EASYTRANSFER_TOKEN_RETENTION_POLICIES": json.dumps({
-                "ephemeral-token": {
-                    "default_retention": "download_once",
-                },
-                "admin-token": {
-                    "default_retention": "ttl",
-                    "default_ttl": 3600,
-                },
-            }),
-        })
+        env.update(
+            {
+                "ETRANSFER_PORT": "8765",
+                "ETRANSFER_STATE_BACKEND": "memory",
+                "ETRANSFER_AUTH_TOKENS": json.dumps([DEFAULT_TOKEN, "admin-token", "ephemeral-token"]),
+                "ETRANSFER_STORAGE_PATH": tempfile.mkdtemp(prefix="et_retention_"),
+                # Set default retention to permanent
+                "ETRANSFER_DEFAULT_RETENTION": "permanent",
+                # Set per-token policies
+                "ETRANSFER_TOKEN_RETENTION_POLICIES": json.dumps(
+                    {
+                        "ephemeral-token": {
+                            "default_retention": "download_once",
+                        },
+                        "admin-token": {
+                            "default_retention": "ttl",
+                            "default_ttl": 3600,
+                        },
+                    }
+                ),
+            }
+        )
         if extra_env:
             env.update(extra_env)
 
-        self._storage_path = env["EASYTRANSFER_STORAGE_PATH"]
+        self._storage_path = env["ETRANSFER_STORAGE_PATH"]
         print(f"  Storage path: {self._storage_path}")
 
         self._server_process = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn",
-             "easytransfer.server.main:app",
-             "--host", "127.0.0.1",
-             "--port", "8765"],
+            [sys.executable, "-m", "uvicorn", "etransfer.server.main:app", "--host", "127.0.0.1", "--port", "8765"],
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -173,6 +175,7 @@ class RetentionTester:
             time.sleep(0.5)
             try:
                 import httpx
+
                 resp = httpx.get(f"{self.server_url}/api/health", timeout=2.0)
                 if resp.status_code == 200:
                     print("  Server ready!")
@@ -208,6 +211,7 @@ class RetentionTester:
             print(f"\n  ✗ FAILED: {name}")
             print(f"    Error: {e}")
             import traceback
+
             traceback.print_exc()
 
     def test_permanent_retention(self):
@@ -235,8 +239,9 @@ class RetentionTester:
         dl1 = tempfile.mktemp(suffix=".bin")
         status, headers = self.download_file(file_id, dl1)
         assert status == 200, f"Download failed with {status}"
-        assert headers.get("x-retention-policy") == "permanent", \
-            f"Expected permanent in header, got {headers.get('x-retention-policy')}"
+        assert (
+            headers.get("x-retention-policy") == "permanent"
+        ), f"Expected permanent in header, got {headers.get('x-retention-policy')}"
         dl1_md5 = md5_file(dl1)
         assert dl1_md5 == original_md5, "MD5 mismatch on download 1"
         print(f"  Download 1 OK, MD5 matches, count={headers.get('x-download-count')}")
@@ -360,6 +365,7 @@ class RetentionTester:
         # Trigger cleanup manually (server cleanup loop might not run this fast)
         print("  Triggering server cleanup...")
         import httpx
+
         # Call the cleanup endpoint or just check - the cleanup task runs periodically
         # For the test, we trigger it by hitting the storage status endpoint
         try:
@@ -397,7 +403,8 @@ class RetentionTester:
         original_md5 = md5_file(file_path)
 
         # Upload using the ephemeral-token (which has default_retention=download_once)
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
+
         client = EasyTransferClient(
             server_url=self.server_url,
             token="ephemeral-token",
@@ -418,8 +425,7 @@ class RetentionTester:
         assert info is not None, "File info should exist"
         retention = info.get("metadata", {}).get("retention", "")
         print(f"  Retention from info: {retention}")
-        assert retention == "download_once", \
-            f"Expected download_once from token policy, got {retention}"
+        assert retention == "download_once", f"Expected download_once from token policy, got {retention}"
 
         # Download - should trigger deletion
         print("  Downloading file...")
@@ -447,7 +453,8 @@ class RetentionTester:
         file_path = create_test_file(512 * 1024)
 
         # Upload using ephemeral-token but explicitly set permanent
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
+
         client = EasyTransferClient(
             server_url=self.server_url,
             token="ephemeral-token",
@@ -468,8 +475,7 @@ class RetentionTester:
         assert info is not None
         retention = info.get("metadata", {}).get("retention", "")
         print(f"  Retention from info: {retention}")
-        assert retention == "permanent", \
-            f"Expected permanent (client override), got {retention}"
+        assert retention == "permanent", f"Expected permanent (client override), got {retention}"
 
         # Download twice - file should persist
         for i in range(2):
@@ -514,7 +520,8 @@ def main():
     parser.add_argument("--server", default=DEFAULT_SERVER_URL, help="Server URL")
     parser.add_argument("--token", default=DEFAULT_TOKEN, help="Auth token")
     parser.add_argument(
-        "--no-server", action="store_true",
+        "--no-server",
+        action="store_true",
         help="Don't start a local server (connect to existing)",
     )
     args = parser.parse_args()

@@ -16,33 +16,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def test_constants():
     """测试常量模块。"""
     print("测试常量模块...")
-    
-    from easytransfer.common.constants import (
-        TUS_VERSION,
-        DEFAULT_CHUNK_SIZE,
-        TUS_EXTENSIONS,
-        TusHeaders,
-    )
-    
+
+    from etransfer.common.constants import DEFAULT_CHUNK_SIZE, TUS_EXTENSIONS, TUS_VERSION, TusHeaders
+
     assert TUS_VERSION == "1.0.0"
     assert DEFAULT_CHUNK_SIZE == 4 * 1024 * 1024
     assert "creation" in TUS_EXTENSIONS
     assert TusHeaders.TUS_RESUMABLE == "Tus-Resumable"
-    
+
     print("  ✓ 常量模块测试通过")
 
 
 def test_models():
     """测试数据模型。"""
     print("测试数据模型...")
-    
-    from easytransfer.common.models import (
-        FileInfo,
-        FileStatus,
-        ServerInfo,
-        NetworkInterface,
-    )
-    
+
+    from etransfer.common.models import FileInfo, FileStatus, NetworkInterface, ServerInfo
+
     # 测试 FileInfo
     file_info = FileInfo(
         file_id="test123",
@@ -51,15 +41,15 @@ def test_models():
         chunk_size=256,
         total_chunks=4,
     )
-    
+
     assert file_info.file_id == "test123"
     assert file_info.progress == 0.0
     assert not file_info.is_complete
-    
+
     file_info.uploaded_size = 1024
     assert file_info.progress == 100.0
     assert file_info.is_complete
-    
+
     # 测试 ServerInfo
     server_info = ServerInfo(
         version="0.1.0",
@@ -67,9 +57,9 @@ def test_models():
         tus_extensions=["creation"],
         chunk_size=4194304,
     )
-    
+
     assert server_info.version == "0.1.0"
-    
+
     print("  ✓ 数据模型测试通过")
 
 
@@ -77,13 +67,13 @@ def test_config():
     """测试配置模块。"""
     print("测试配置模块...")
 
-    from easytransfer.server.config import (
-        ServerSettings,
+    from etransfer.server.config import (
         HOT_RELOADABLE_FIELDS,
-        parse_size,
+        ServerSettings,
         _parse_yaml_to_settings_dict,
         discover_config_path,
         load_server_settings,
+        parse_size,
         reload_hot_settings,
     )
 
@@ -102,19 +92,21 @@ def test_config():
     assert custom.max_upload_size == 1024 * 1024
 
     # 测试 parse_size
-    assert parse_size("1GB") == 1024 ** 3
-    assert parse_size("100MB") == 100 * 1024 ** 2
+    assert parse_size("1GB") == 1024**3
+    assert parse_size("100MB") == 100 * 1024**2
     assert parse_size("1024") == 1024
 
     # 测试 YAML 解析
-    d = _parse_yaml_to_settings_dict({
-        "server": {"port": 7777},
-        "auth": {"tokens": ["t1"]},
-        "storage": {"max_storage_size": "2GB"},
-    })
+    d = _parse_yaml_to_settings_dict(
+        {
+            "server": {"port": 7777},
+            "auth": {"tokens": ["t1"]},
+            "storage": {"max_storage_size": "2GB"},
+        }
+    )
     assert d["port"] == 7777
     assert d["auth_tokens"] == ["t1"]
-    assert d["max_storage_size"] == 2 * 1024 ** 3
+    assert d["max_storage_size"] == 2 * 1024**3
 
     # 测试 HOT_RELOADABLE_FIELDS 完整性
     all_fields = set(ServerSettings.model_fields.keys())
@@ -125,6 +117,7 @@ def test_config():
 
     # 测试热重载
     import yaml
+
     cfg = Path(tempfile.mkdtemp()) / "test.yaml"
     cfg.write_text(yaml.dump({"auth": {"tokens": ["old"]}}))
     s = load_server_settings(cfg)
@@ -140,35 +133,35 @@ def test_config():
 def test_cache():
     """测试本地缓存模块。"""
     print("测试本地缓存模块...")
-    
-    from easytransfer.client.cache import LocalCache
-    
+
+    from etransfer.client.cache import LocalCache
+
     with tempfile.TemporaryDirectory() as tmpdir:
         cache = LocalCache(Path(tmpdir))
-        
+
         # 测试写入和读取
         file_id = "test_file_123"
         chunk_data = b"Hello, World!" * 1000
-        
+
         cache.put_chunk(file_id, 0, chunk_data)
         assert cache.has_chunk(file_id, 0)
-        
+
         retrieved = cache.get_chunk(file_id, 0)
         assert retrieved == chunk_data
-        
+
         # 测试获取已缓存的分片列表
         cache.put_chunk(file_id, 1, b"Chunk 1")
         cache.put_chunk(file_id, 2, b"Chunk 2")
-        
+
         cached_chunks = cache.get_cached_chunks(file_id)
         assert 0 in cached_chunks
         assert 1 in cached_chunks
         assert 2 in cached_chunks
-        
+
         # 测试清理
         cache.clear_file(file_id)
         assert not cache.has_chunk(file_id, 0)
-    
+
     print("  ✓ 本地缓存测试通过")
 
 
@@ -176,8 +169,9 @@ def test_tus_metadata():
     """测试 TUS 元数据解析。"""
     print("测试 TUS 元数据...")
 
-    from easytransfer.server.tus.models import TusMetadata, RetentionPolicy
     import base64
+
+    from etransfer.server.tus.models import RetentionPolicy, TusMetadata
 
     # 构造 Upload-Metadata 头
     filename = base64.b64encode(b"test.txt").decode()
@@ -197,10 +191,7 @@ def test_tus_metadata():
 
     # 测试带 retention 的元数据解析
     retention_val = base64.b64encode(b"download_once").decode()
-    header_with_retention = (
-        f"filename {filename},"
-        f"retention {retention_val}"
-    )
+    header_with_retention = f"filename {filename}," f"retention {retention_val}"
     meta2 = TusMetadata.from_header(header_with_retention)
     assert meta2.retention == "download_once"
     assert meta2.retention_ttl is None
@@ -208,9 +199,7 @@ def test_tus_metadata():
     # 测试带 TTL 的元数据解析
     ttl_val = base64.b64encode(b"3600").decode()
     retention_ttl_val = base64.b64encode(b"ttl").decode()
-    header_with_ttl = f"filename {filename}," \
-        f"retention {retention_ttl_val}," \
-        f"retention_ttl {ttl_val}"
+    header_with_ttl = f"filename {filename}," f"retention {retention_ttl_val}," f"retention_ttl {ttl_val}"
     meta3 = TusMetadata.from_header(header_with_ttl)
     assert meta3.retention == "ttl"
     assert meta3.retention_ttl == 3600
@@ -238,47 +227,48 @@ def test_tus_metadata():
 def test_ip_manager():
     """测试 IP 管理器。"""
     print("测试 IP 管理器...")
-    
-    from easytransfer.server.services.ip_mgr import IPManager
-    
+
+    from etransfer.server.services.ip_mgr import IPManager
+
     ip_mgr = IPManager()
-    
+
     # 获取接口列表
     interfaces = ip_mgr.get_interfaces()
     print(f"  发现 {len(interfaces)} 个网络接口")
-    
+
     for iface in interfaces[:3]:  # 只显示前3个
         print(f"    - {iface.name}: {iface.ip_address}")
-    
+
     # 获取 IP 列表
     ips = ip_mgr.get_ip_addresses()
     assert isinstance(ips, list)
-    
+
     # 获取主 IP
     primary = ip_mgr.get_primary_ip()
     print(f"  主 IP: {primary}")
-    
+
     print("  ✓ IP 管理器测试通过")
 
 
 def test_traffic_monitor():
     """测试流量监控。"""
     print("测试流量监控...")
-    
-    from easytransfer.server.services.traffic import TrafficMonitor
+
     import time
-    
+
+    from etransfer.server.services.traffic import TrafficMonitor
+
     monitor = TrafficMonitor()
-    
+
     # 获取当前流量
     traffic = monitor.get_all_traffic()
     print(f"  监控 {len(traffic)} 个接口")
-    
+
     # 获取总流量
     total = monitor.get_total_traffic()
     print(f"  总发送: {monitor.format_rate(total['upload_rate'])}")
     print(f"  总接收: {monitor.format_rate(total['download_rate'])}")
-    
+
     print("  ✓ 流量监控测试通过")
 
 
@@ -287,7 +277,7 @@ def run_all_tests():
     print("=" * 50)
     print("EasyTransfer 单元测试")
     print("=" * 50)
-    
+
     tests = [
         test_constants,
         test_models,
@@ -297,10 +287,10 @@ def run_all_tests():
         test_ip_manager,
         test_traffic_monitor,
     ]
-    
+
     passed = 0
     failed = 0
-    
+
     for test in tests:
         try:
             test()
@@ -308,15 +298,14 @@ def run_all_tests():
         except Exception as e:
             print(f"  ✗ 测试失败: {e}")
             failed += 1
-    
+
     print("\n" + "=" * 50)
     print(f"测试结果: {passed} 通过, {failed} 失败")
     print("=" * 50)
-    
+
     return failed == 0
 
 
 if __name__ == "__main__":
     success = run_all_tests()
     sys.exit(0 if success else 1)
-

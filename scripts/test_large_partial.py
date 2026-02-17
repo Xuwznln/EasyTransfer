@@ -22,8 +22,8 @@ import hashlib
 import json
 import os
 import sys
-import time
 import tempfile
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -91,8 +91,11 @@ def create_test_file(path: str, size: int) -> str:
             pct = written * 100 / size
             elapsed = time.time() - t0
             speed = written / elapsed if elapsed > 0 else 0
-            print(f"\r  Writing: {pct:.0f}% ({fmt_size(written)}/{fmt_size(size)}) "
-                  f"@ {fmt_speed(speed)}    ", end="", flush=True)
+            print(
+                f"\r  Writing: {pct:.0f}% ({fmt_size(written)}/{fmt_size(size)}) " f"@ {fmt_speed(speed)}    ",
+                end="",
+                flush=True,
+            )
     print(f"\r  Created in {time.time() - t0:.1f}s, MD5: {h.hexdigest()}")
     return h.hexdigest()
 
@@ -118,6 +121,7 @@ class LargeFileTest:
 
     def _http(self):
         import httpx
+
         return httpx.Client(base_url=self.server_url, headers=self._headers(), timeout=120.0)
 
     # ─── TEST 1: Partial Upload ─────────────────────────────────────────
@@ -129,7 +133,7 @@ class LargeFileTest:
         """
         banner(f"TEST 1: Partial Upload (stop at {stop_pct:.0f}%)")
 
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
 
         stop_at = int(self.file_size * stop_pct / 100)
         # Align to chunk boundary
@@ -168,9 +172,7 @@ class LargeFileTest:
             print(f"  Server status: {info['status']}")
             print(f"  Uploaded: {fmt_size(info['uploaded_size'])} / {fmt_size(info['size'])}")
             assert info["status"] == "partial", f"Expected partial, got {info['status']}"
-            assert info["uploaded_size"] == stop_at, (
-                f"Expected {stop_at}, got {info['uploaded_size']}"
-            )
+            assert info["uploaded_size"] == stop_at, f"Expected {stop_at}, got {info['uploaded_size']}"
 
         print("  PASSED")
         self.results["partial_upload"] = True
@@ -179,9 +181,7 @@ class LargeFileTest:
 
     # ─── TEST 2: Download Partial File ──────────────────────────────────
 
-    def test_download_partial(
-        self, file_id: str, expected_size: int, original_file: str
-    ) -> bool:
+    def test_download_partial(self, file_id: str, expected_size: int, original_file: str) -> bool:
         """Download the available portion of a partially uploaded file."""
         banner("TEST 2: Download Partial File (before upload completes)")
 
@@ -207,12 +207,9 @@ class LargeFileTest:
             downloaded = r.content
             elapsed = time.time() - t0
             speed = len(downloaded) / elapsed if elapsed > 0 else 0
-            print(f"  Downloaded: {fmt_size(len(downloaded))} in {elapsed:.2f}s "
-                  f"({fmt_speed(speed)})")
+            print(f"  Downloaded: {fmt_size(len(downloaded))} in {elapsed:.2f}s " f"({fmt_speed(speed)})")
 
-            assert len(downloaded) == expected_size, (
-                f"Size mismatch: got {len(downloaded)}, expected {expected_size}"
-            )
+            assert len(downloaded) == expected_size, f"Size mismatch: got {len(downloaded)}, expected {expected_size}"
 
             # Verify integrity against original file's first N bytes
             expected_md5 = md5_partial(original_file, expected_size)
@@ -227,9 +224,7 @@ class LargeFileTest:
 
     # ─── TEST 3: Range Download ─────────────────────────────────────────
 
-    def test_range_download(
-        self, file_id: str, available_size: int, original_file: str
-    ) -> bool:
+    def test_range_download(self, file_id: str, available_size: int, original_file: str) -> bool:
         """Test downloading specific byte ranges."""
         banner("TEST 3: Range Download (specific byte ranges)")
 
@@ -256,10 +251,9 @@ class LargeFileTest:
                 )
                 assert r.status_code == 206, f"Expected 206, got {r.status_code}"
 
-                expected_data = original_data[start:end + 1]
+                expected_data = original_data[start : end + 1]
                 assert r.content == expected_data, (
-                    f"Range {start}-{end} data mismatch! "
-                    f"Got {len(r.content)} bytes, expected {len(expected_data)}"
+                    f"Range {start}-{end} data mismatch! " f"Got {len(r.content)} bytes, expected {len(expected_data)}"
                 )
                 print(f"  [{label}] bytes={start}-{end} -> {fmt_size(len(r.content))} OK")
 
@@ -270,14 +264,17 @@ class LargeFileTest:
     # ─── TEST 4: Resume Upload ──────────────────────────────────────────
 
     def test_resume_upload(
-        self, upload_url: str, file_id: str, test_file: str,
-        current_offset: int, stop_pct: float = 80.0,
+        self,
+        upload_url: str,
+        file_id: str,
+        test_file: str,
+        current_offset: int,
+        stop_pct: float = 80.0,
     ) -> int:
         """Resume uploading from current offset to a new stop point."""
-        banner(f"TEST 4: Resume Upload (from {current_offset * 100 / self.file_size:.0f}% "
-               f"to {stop_pct:.0f}%)")
+        banner(f"TEST 4: Resume Upload (from {current_offset * 100 / self.file_size:.0f}% " f"to {stop_pct:.0f}%)")
 
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
 
         new_stop = int(self.file_size * stop_pct / 100)
         new_stop = (new_stop // self.chunk_size) * self.chunk_size
@@ -317,9 +314,7 @@ class LargeFileTest:
 
     # ─── TEST 5: Download After Resume ──────────────────────────────────
 
-    def test_download_after_resume(
-        self, file_id: str, available_size: int, original_file: str
-    ) -> bool:
+    def test_download_after_resume(self, file_id: str, available_size: int, original_file: str) -> bool:
         """Download the increased available portion after resume."""
         banner(f"TEST 5: Download After Resume ({available_size * 100 / self.file_size:.0f}% available)")
 
@@ -330,8 +325,7 @@ class LargeFileTest:
             elapsed = time.time() - t0
             speed = len(downloaded) / elapsed if elapsed > 0 else 0
 
-            print(f"  Downloaded: {fmt_size(len(downloaded))} in {elapsed:.2f}s "
-                  f"({fmt_speed(speed)})")
+            print(f"  Downloaded: {fmt_size(len(downloaded))} in {elapsed:.2f}s " f"({fmt_speed(speed)})")
             assert len(downloaded) == available_size
 
             expected_md5 = md5_partial(original_file, available_size)
@@ -345,13 +339,11 @@ class LargeFileTest:
 
     # ─── TEST 6: Complete Upload ────────────────────────────────────────
 
-    def test_complete_upload(
-        self, upload_url: str, file_id: str, test_file: str, current_offset: int
-    ) -> bool:
+    def test_complete_upload(self, upload_url: str, file_id: str, test_file: str, current_offset: int) -> bool:
         """Complete the upload from current offset to 100%."""
         banner(f"TEST 6: Complete Upload (from {current_offset * 100 / self.file_size:.0f}% to 100%)")
 
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
 
         remaining = self.file_size - current_offset
         print(f"  Remaining: {fmt_size(remaining)}")
@@ -386,9 +378,7 @@ class LargeFileTest:
 
     # ─── TEST 7: Full Download & Verify ─────────────────────────────────
 
-    def test_full_download_verify(
-        self, file_id: str, original_file: str, original_md5: str
-    ) -> bool:
+    def test_full_download_verify(self, file_id: str, original_file: str, original_md5: str) -> bool:
         """Download the complete file and verify integrity."""
         banner("TEST 7: Full Download & Integrity Verification")
 
@@ -415,17 +405,17 @@ class LargeFileTest:
                         pct = total_downloaded * 100 / self.file_size
                         elapsed = time.time() - t0
                         speed = total_downloaded / elapsed if elapsed > 0 else 0
-                        print(f"\r  Downloading: {pct:.0f}% ({fmt_size(total_downloaded)}) "
-                              f"@ {fmt_speed(speed)}    ", end="", flush=True)
+                        print(
+                            f"\r  Downloading: {pct:.0f}% ({fmt_size(total_downloaded)}) " f"@ {fmt_speed(speed)}    ",
+                            end="",
+                            flush=True,
+                        )
 
             elapsed = time.time() - t0
             speed = total_downloaded / elapsed if elapsed > 0 else 0
-            print(f"\r  Downloaded {fmt_size(total_downloaded)} in {elapsed:.1f}s "
-                  f"({fmt_speed(speed)})          ")
+            print(f"\r  Downloaded {fmt_size(total_downloaded)} in {elapsed:.1f}s " f"({fmt_speed(speed)})          ")
 
-            assert total_downloaded == self.file_size, (
-                f"Size mismatch: {total_downloaded} != {self.file_size}"
-            )
+            assert total_downloaded == self.file_size, f"Size mismatch: {total_downloaded} != {self.file_size}"
 
             # MD5 verification
             print("  Computing MD5...")
@@ -451,7 +441,7 @@ class LargeFileTest:
 
         import threading
 
-        from easytransfer.client.tus_client import EasyTransferClient
+        from etransfer.client.tus_client import EasyTransferClient
 
         # Create a new upload
         client = EasyTransferClient(self.server_url, token=self.token)
@@ -462,8 +452,7 @@ class LargeFileTest:
 
         # Upload first 25% to create the upload on server
         first_stop = max(self.chunk_size, (self.file_size // 4 // self.chunk_size) * self.chunk_size)
-        print(f"  Step 1: Upload first {first_stop * 100 / self.file_size:.0f}% "
-              f"({fmt_size(first_stop)})")
+        print(f"  Step 1: Upload first {first_stop * 100 / self.file_size:.0f}% " f"({fmt_size(first_stop)})")
         uploader.upload(stop_at=first_stop)
 
         upload_url = uploader.url
@@ -504,8 +493,7 @@ class LargeFileTest:
             r = http.get(f"/api/files/{file_id}/info/download")
             dl_info = r.json()
             avail = dl_info["available_size"]
-            print(f"  Available now: {fmt_size(avail)} "
-                  f"({avail * 100 / self.file_size:.1f}%)")
+            print(f"  Available now: {fmt_size(avail)} " f"({avail * 100 / self.file_size:.1f}%)")
 
             # Download what's available
             if avail > 0:
@@ -528,8 +516,7 @@ class LargeFileTest:
         with self._http() as http:
             r = http.get(f"/api/files/{file_id}")
             info = r.json()
-            print(f"  Final state: {info['status']}, "
-                  f"uploaded: {fmt_size(info['uploaded_size'])}")
+            print(f"  Final state: {info['status']}, " f"uploaded: {fmt_size(info['uploaded_size'])}")
 
         # Cleanup
         with self._http() as http:
@@ -647,12 +634,11 @@ class LargeFileTest:
 
 def main():
     parser = argparse.ArgumentParser(description="Large file partial upload/download test")
-    parser.add_argument("--size", type=int, default=DEFAULT_SIZE_MB,
-                        help=f"Test file size in MB (default: {DEFAULT_SIZE_MB})")
-    parser.add_argument("--server", default=DEFAULT_SERVER_URL,
-                        help=f"Server URL (default: {DEFAULT_SERVER_URL})")
-    parser.add_argument("--token", default=DEFAULT_TOKEN,
-                        help="API token")
+    parser.add_argument(
+        "--size", type=int, default=DEFAULT_SIZE_MB, help=f"Test file size in MB (default: {DEFAULT_SIZE_MB})"
+    )
+    parser.add_argument("--server", default=DEFAULT_SERVER_URL, help=f"Server URL (default: {DEFAULT_SERVER_URL})")
+    parser.add_argument("--token", default=DEFAULT_TOKEN, help="API token")
     args = parser.parse_args()
 
     file_size = args.size * 1024 * 1024

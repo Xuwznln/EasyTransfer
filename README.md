@@ -16,12 +16,12 @@
 - **双数据库后端** — 用户数据库支持 SQLite（默认）和 MySQL
 - **Token 鉴权** — 基于 API Key 的认证机制 + OIDC Session Token
 - **客户端** — CLI（Rich 美化进度条 + login/whoami/logout）+ GUI（Tkinter）
-- **pip 安装** — `pip install easytransfer` 一键安装
+- **pip 安装** — `pip install etransfer` 一键安装
 
 ## 项目结构
 
 ```
-easytransfer/
+etransfer/
 ├── client/                     # 客户端
 │   ├── cli.py                  # CLI 命令行工具 (Typer + Rich)
 │   ├── gui.py                  # GUI 图形界面 (Tkinter/ttkbootstrap)
@@ -87,7 +87,7 @@ pip install -e ".[dev]"
 
 ### 启动服务端
 
-配置文件会自动发现（`./config.yaml` → `./config/config.yaml` → `~/.easytransfer/server.yaml`），也可通过 `$EASYTRANSFER_CONFIG` 环境变量或 `--config` 指定。
+配置文件会自动发现（`./config.yaml` → `./config/config.yaml` → `~/.etransfer/server.yaml`），也可通过 `$ETRANSFER_CONFIG` 环境变量或 `--config` 指定。
 
 ```bash
 # 方式一：CLI（自动发现 config/config.yaml）
@@ -97,64 +97,64 @@ et server start
 et server start --config /path/to/config.yaml
 
 # 方式三：uvicorn 直接启动（同样自动发现配置）
-uvicorn easytransfer.server.main:app --host 0.0.0.0 --port 8765
+uvicorn etransfer.server.main:app --host 0.0.0.0 --port 8765
 
 # 方式四：环境变量指定配置文件
-EASYTRANSFER_CONFIG=/path/to/config.yaml uvicorn easytransfer.server.main:app
+ETRANSFER_CONFIG=/path/to/config.yaml uvicorn etransfer.server.main:app
 ```
 
 ### 客户端配置（只需一次）
 
 ```bash
 # 配置服务器地址（域名+端口 或 IP+端口）
-easytransfer setup 192.168.1.100:8765
+etransfer setup 192.168.1.100:8765
 
 # 如果服务器要求登录（OIDC），执行登录
-easytransfer login
+etransfer login
 # CLI 会输出一个 URL，手动在浏览器中打开完成认证
 
 # 查看当前配置和登录状态
-easytransfer status
+etransfer status
 ```
 
 ### 上传文件
 
 ```bash
 # CLI 上传（自动使用已配置的服务器和缓存的 token）
-easytransfer upload ./myfile.zip
+etransfer upload ./myfile.zip
 
 # 指定缓存策略
-easytransfer upload ./secret.pdf --retention download_once
+etransfer upload ./secret.pdf --retention download_once
 
 # 指定 TTL（1小时后过期）
-easytransfer upload ./temp.dat --retention ttl --retention-ttl 3600
+etransfer upload ./temp.dat --retention ttl --retention-ttl 3600
 
 # 临时使用其他 token（覆盖缓存）
-easytransfer upload ./myfile.zip --token other-api-token
+etransfer upload ./myfile.zip --token other-api-token
 ```
 
 ### 下载文件
 
 ```bash
-easytransfer download <file_id> -o ./downloads/
+etransfer download <file_id> -o ./downloads/
 ```
 
 ### 查看文件列表
 
 ```bash
-easytransfer list
+etransfer list
 ```
 
 ### 查看服务器信息
 
 ```bash
-easytransfer info
+etransfer info
 ```
 
 ### 启动 GUI
 
 ```bash
-easytransfer gui
+etransfer gui
 ```
 
 ## Python API
@@ -162,7 +162,7 @@ easytransfer gui
 ### 上传
 
 ```python
-from easytransfer.client.tus_client import EasyTransferClient
+from etransfer.client.tus_client import EasyTransferClient
 
 client = EasyTransferClient(
     server_url="http://localhost:8765",
@@ -203,7 +203,7 @@ file_id = uploader.url.split("/")[-1]
 ### 下载
 
 ```python
-from easytransfer.client.downloader import ChunkDownloader
+from etransfer.client.downloader import ChunkDownloader
 
 downloader = ChunkDownloader("http://localhost:8765", token="my-secret-token")
 
@@ -239,23 +239,23 @@ storage = client.get_storage_status()
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `EASYTRANSFER_HOST` | 绑定地址 | `0.0.0.0` |
-| `EASYTRANSFER_PORT` | 端口 | `8765` |
-| `EASYTRANSFER_STORAGE_PATH` | 文件存储路径 | `./storage` |
-| `EASYTRANSFER_STATE_BACKEND` | 状态后端 (`memory`/`file`/`redis`) | `file` |
-| `EASYTRANSFER_REDIS_URL` | Redis 地址 | `redis://localhost:6379/0` |
-| `EASYTRANSFER_AUTH_ENABLED` | 启用鉴权 | `true` |
-| `EASYTRANSFER_AUTH_TOKENS` | Token 列表（JSON 数组） | `[]` |
-| `EASYTRANSFER_MAX_UPLOAD_SIZE` | 单文件大小限制 | 不限 |
-| `EASYTRANSFER_MAX_STORAGE_SIZE` | 总存储配额（支持 `100MB`/`1GB` 等） | 不限 |
-| `EASYTRANSFER_CHUNK_SIZE` | 默认切片大小 | `4194304` (4MB) |
-| `EASYTRANSFER_ADVERTISED_ENDPOINTS` | 广播 IP 列表（JSON 数组或逗号分隔） | 自动检测 |
-| `EASYTRANSFER_DEFAULT_RETENTION` | 全局默认缓存策略 | `permanent` |
-| `EASYTRANSFER_DEFAULT_RETENTION_TTL` | 全局默认 TTL（秒，仅 `ttl` 策略） | 不限 |
-| `EASYTRANSFER_TOKEN_RETENTION_POLICIES` | 按 Token 设置缓存策略（JSON） | `{}` |
-| `EASYTRANSFER_CLEANUP_INTERVAL` | 清理任务间隔（秒） | `3600` |
-| `EASYTRANSFER_UPLOAD_EXPIRATION_HOURS` | 未完成上传过期时间（小时） | `24` |
-| `EASYTRANSFER_CORS_ORIGINS` | CORS 允许来源 | `["*"]` |
+| `ETRANSFER_HOST` | 绑定地址 | `0.0.0.0` |
+| `ETRANSFER_PORT` | 端口 | `8765` |
+| `ETRANSFER_STORAGE_PATH` | 文件存储路径 | `./storage` |
+| `ETRANSFER_STATE_BACKEND` | 状态后端 (`memory`/`file`/`redis`) | `file` |
+| `ETRANSFER_REDIS_URL` | Redis 地址 | `redis://localhost:6379/0` |
+| `ETRANSFER_AUTH_ENABLED` | 启用鉴权 | `true` |
+| `ETRANSFER_AUTH_TOKENS` | Token 列表（JSON 数组） | `[]` |
+| `ETRANSFER_MAX_UPLOAD_SIZE` | 单文件大小限制 | 不限 |
+| `ETRANSFER_MAX_STORAGE_SIZE` | 总存储配额（支持 `100MB`/`1GB` 等） | 不限 |
+| `ETRANSFER_CHUNK_SIZE` | 默认切片大小 | `4194304` (4MB) |
+| `ETRANSFER_ADVERTISED_ENDPOINTS` | 广播 IP 列表（JSON 数组或逗号分隔） | 自动检测 |
+| `ETRANSFER_DEFAULT_RETENTION` | 全局默认缓存策略 | `permanent` |
+| `ETRANSFER_DEFAULT_RETENTION_TTL` | 全局默认 TTL（秒，仅 `ttl` 策略） | 不限 |
+| `ETRANSFER_TOKEN_RETENTION_POLICIES` | 按 Token 设置缓存策略（JSON） | `{}` |
+| `ETRANSFER_CLEANUP_INTERVAL` | 清理任务间隔（秒） | `3600` |
+| `ETRANSFER_UPLOAD_EXPIRATION_HOURS` | 未完成上传过期时间（小时） | `24` |
+| `ETRANSFER_CORS_ORIGINS` | CORS 允许来源 | `["*"]` |
 
 ### 配置文件
 
@@ -306,7 +306,7 @@ curl -X POST http://localhost:8765/api/admin/reload-config \
 Token 级策略配置示例：
 
 ```bash
-export EASYTRANSFER_TOKEN_RETENTION_POLICIES='{
+export ETRANSFER_TOKEN_RETENTION_POLICIES='{
     "guest-token": {
         "default_retention": "download_once"
     },
@@ -331,7 +331,7 @@ export EASYTRANSFER_TOKEN_RETENTION_POLICIES='{
 设置服务端最大存储容量：
 
 ```bash
-export EASYTRANSFER_MAX_STORAGE_SIZE=10GB
+export ETRANSFER_MAX_STORAGE_SIZE=10GB
 ```
 
 超限时：
@@ -407,16 +407,16 @@ export EASYTRANSFER_MAX_STORAGE_SIZE=10GB
 
 ```bash
 # 1. 先配置服务器地址
-easytransfer setup your-server:8765
+etransfer setup your-server:8765
 
 # 2. 登录（CLI 输出 URL，手动在浏览器打开）
-easytransfer login
+etransfer login
 
 # 3. 查看当前用户
-easytransfer whoami
+etransfer whoami
 
 # 4. 注销
-easytransfer logout
+etransfer logout
 ```
 
 **配额优先级：** 群组配额（最大值）> 角色配额 > 全局默认。`None` 表示不限。

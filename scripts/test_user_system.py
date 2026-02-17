@@ -14,8 +14,8 @@ This tests the user system WITHOUT requiring a real OIDC provider:
 
 For real OIDC testing (e.g. with Casdoor, Keycloak, Auth0):
   - Configure OIDC credentials in config.yaml
-  - Start server: easytransfer server start --config config.yaml
-  - Run: easytransfer setup localhost:8765 && easytransfer login
+  - Start server: etransfer server start --config config.yaml
+  - Run: etransfer setup localhost:8765 && etransfer login
 """
 
 import asyncio
@@ -47,44 +47,56 @@ def format_size(n):
 
 # ── Server lifecycle ──────────────────────────────────────────
 
+
 def start_server(storage_path):
     env = os.environ.copy()
-    env.update({
-        "EASYTRANSFER_PORT": str(SERVER_PORT),
-        "EASYTRANSFER_STATE_BACKEND": "memory",
-        "EASYTRANSFER_AUTH_TOKENS": json.dumps([API_TOKEN]),
-        "EASYTRANSFER_STORAGE_PATH": storage_path,
-        "EASYTRANSFER_USER_SYSTEM_ENABLED": "true",
-        "EASYTRANSFER_OIDC_ISSUER_URL": OIDC_ISSUER,
-        "EASYTRANSFER_OIDC_CLIENT_ID": "test-client-id",
-        "EASYTRANSFER_OIDC_CLIENT_SECRET": "test-secret",
-        "EASYTRANSFER_OIDC_CALLBACK_URL": f"{BASE_URL}/api/users/callback",
-        "EASYTRANSFER_USER_DB_PATH": str(Path(storage_path) / "users.db"),
-        "EASYTRANSFER_ROLE_QUOTAS": json.dumps({
-            "admin": {
-                "max_storage_size": None,
-                "max_upload_size": None,
-                "upload_speed_limit": None,
-                "download_speed_limit": None,
-            },
-            "user": {
-                "max_storage_size": 50 * 1024 * 1024,  # 50 MB
-                "max_upload_size": 20 * 1024 * 1024,    # 20 MB
-                "upload_speed_limit": None,
-                "download_speed_limit": None,
-            },
-            "guest": {
-                "max_storage_size": 10 * 1024 * 1024,   # 10 MB
-                "max_upload_size": 5 * 1024 * 1024,      # 5 MB
-                "upload_speed_limit": 1 * 1024 * 1024,   # 1 MB/s
-                "download_speed_limit": 1 * 1024 * 1024,
-            },
-        }),
-    })
+    env.update(
+        {
+            "ETRANSFER_PORT": str(SERVER_PORT),
+            "ETRANSFER_STATE_BACKEND": "memory",
+            "ETRANSFER_AUTH_TOKENS": json.dumps([API_TOKEN]),
+            "ETRANSFER_STORAGE_PATH": storage_path,
+            "ETRANSFER_USER_SYSTEM_ENABLED": "true",
+            "ETRANSFER_OIDC_ISSUER_URL": OIDC_ISSUER,
+            "ETRANSFER_OIDC_CLIENT_ID": "test-client-id",
+            "ETRANSFER_OIDC_CLIENT_SECRET": "test-secret",
+            "ETRANSFER_OIDC_CALLBACK_URL": f"{BASE_URL}/api/users/callback",
+            "ETRANSFER_USER_DB_PATH": str(Path(storage_path) / "users.db"),
+            "ETRANSFER_ROLE_QUOTAS": json.dumps(
+                {
+                    "admin": {
+                        "max_storage_size": None,
+                        "max_upload_size": None,
+                        "upload_speed_limit": None,
+                        "download_speed_limit": None,
+                    },
+                    "user": {
+                        "max_storage_size": 50 * 1024 * 1024,  # 50 MB
+                        "max_upload_size": 20 * 1024 * 1024,  # 20 MB
+                        "upload_speed_limit": None,
+                        "download_speed_limit": None,
+                    },
+                    "guest": {
+                        "max_storage_size": 10 * 1024 * 1024,  # 10 MB
+                        "max_upload_size": 5 * 1024 * 1024,  # 5 MB
+                        "upload_speed_limit": 1 * 1024 * 1024,  # 1 MB/s
+                        "download_speed_limit": 1 * 1024 * 1024,
+                    },
+                }
+            ),
+        }
+    )
     proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn",
-         "easytransfer.server.main:app",
-         "--host", "127.0.0.1", "--port", str(SERVER_PORT)],
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "etransfer.server.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(SERVER_PORT),
+        ],
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -112,11 +124,10 @@ def stop_server(proc):
 
 # ── Direct DB helpers (simulate OIDC without real provider) ───
 
-async def create_test_user(
-    db_path, oidc_sub, username, role="user", groups=None
-):
+
+async def create_test_user(db_path, oidc_sub, username, role="user", groups=None):
     """Create a user and session directly in the DB for testing."""
-    from easytransfer.server.auth.db import UserDB
+    from etransfer.server.auth.db import UserDB
 
     db = UserDB(f"sqlite+aiosqlite:///{db_path}")
     await db.connect()
@@ -142,6 +153,7 @@ async def create_test_user(
 
 
 # ── Test functions ────────────────────────────────────────────
+
 
 def test_login_info():
     """Test that login-info endpoint returns OIDC config."""
@@ -263,23 +275,31 @@ def test_group_management(admin_token, user_token):
     hu = {"Authorization": f"Bearer {user_token}"}
 
     # Create a group with generous quota (admin pre-configures quota)
-    r = httpx.post(f"{BASE_URL}/api/groups", headers=ha, json={
-        "name": "vip",
-        "description": "VIP users with extra quota",
-        "max_storage_size": 200 * 1024 * 1024,  # 200 MB
-        "max_upload_size": 100 * 1024 * 1024,    # 100 MB
-    })
+    r = httpx.post(
+        f"{BASE_URL}/api/groups",
+        headers=ha,
+        json={
+            "name": "vip",
+            "description": "VIP users with extra quota",
+            "max_storage_size": 200 * 1024 * 1024,  # 200 MB
+            "max_upload_size": 100 * 1024 * 1024,  # 100 MB
+        },
+    )
     assert r.status_code == 200, f"Create group failed: {r.text}"
     group = r.json()["group"]
     group_id = group["id"]
     print(f"  Created group 'vip' (id={group_id}), quota={format_size(200*1024*1024)}")
 
     # Create a restricted group
-    r = httpx.post(f"{BASE_URL}/api/groups", headers=ha, json={
-        "name": "restricted",
-        "description": "Restricted access",
-        "max_storage_size": 5 * 1024 * 1024,
-    })
+    r = httpx.post(
+        f"{BASE_URL}/api/groups",
+        headers=ha,
+        json={
+            "name": "restricted",
+            "description": "Restricted access",
+            "max_storage_size": 5 * 1024 * 1024,
+        },
+    )
     assert r.status_code == 200
 
     # List groups
@@ -294,9 +314,7 @@ def test_group_management(admin_token, user_token):
     user_id = r.json()["id"]
 
     # Add user to VIP group
-    r = httpx.post(
-        f"{BASE_URL}/api/groups/{group_id}/members/{user_id}", headers=ha
-    )
+    r = httpx.post(f"{BASE_URL}/api/groups/{group_id}/members/{user_id}", headers=ha)
     assert r.status_code == 200
     print(f"  Added user (id={user_id}) to 'vip' group")
 
@@ -305,15 +323,11 @@ def test_group_management(admin_token, user_token):
     assert r.status_code == 200
     quota = r.json()
     effective_max = quota["quota"]["max_storage_size"]
-    assert effective_max == 200 * 1024 * 1024, (
-        f"Expected 200MB from VIP group, got {format_size(effective_max or 0)}"
-    )
+    assert effective_max == 200 * 1024 * 1024, f"Expected 200MB from VIP group, got {format_size(effective_max or 0)}"
     print(f"  Effective quota after VIP group: {format_size(effective_max)}")
 
     # Remove from group
-    r = httpx.delete(
-        f"{BASE_URL}/api/groups/{group_id}/members/{user_id}", headers=ha
-    )
+    r = httpx.delete(f"{BASE_URL}/api/groups/{group_id}/members/{user_id}", headers=ha)
     assert r.status_code == 200
 
     # Verify quota reverts to role default
@@ -333,7 +347,7 @@ def test_oidc_group_sync(db_path):
     print("=" * 60)
 
     async def _test():
-        from easytransfer.server.auth.db import UserDB
+        from etransfer.server.auth.db import UserDB
 
         db = UserDB(f"sqlite+aiosqlite:///{db_path}")
         await db.connect()
@@ -392,19 +406,26 @@ def test_session_auth_for_upload(user_token, storage_path):
         print(f"  TUS OPTIONS: {r.status_code}")
 
         filename_b64 = base64.b64encode(b"session_test.bin").decode()
-        r = client.post("/tus", headers={
-            "Upload-Length": str(len(test_data)),
-            "Upload-Metadata": f"filename {filename_b64}",
-        })
+        r = client.post(
+            "/tus",
+            headers={
+                "Upload-Length": str(len(test_data)),
+                "Upload-Metadata": f"filename {filename_b64}",
+            },
+        )
         assert r.status_code == 201, f"TUS POST failed: {r.status_code} {r.text}"
         location = r.headers["Location"]
         file_id = location.split("/")[-1]
         print(f"  TUS CREATE: file_id={file_id}")
 
-        r = client.patch(location, content=test_data, headers={
-            "Content-Type": "application/offset+octet-stream",
-            "Upload-Offset": "0",
-        })
+        r = client.patch(
+            location,
+            content=test_data,
+            headers={
+                "Content-Type": "application/offset+octet-stream",
+                "Upload-Offset": "0",
+            },
+        )
         assert r.status_code == 204, f"TUS PATCH failed: {r.status_code} {r.text}"
         print(f"  TUS UPLOAD: {len(test_data)} bytes")
 
@@ -503,6 +524,7 @@ def test_logout(user_token):
 
 # ── Main ──────────────────────────────────────────────────────
 
+
 def main():
     os.system(f"lsof -ti:{SERVER_PORT} | xargs -r kill -9 2>/dev/null")
     time.sleep(1)
@@ -543,15 +565,9 @@ def main():
             print(f"\n  FAILED: {e}")
 
         # Create test users directly in DB (simulates OIDC login)
-        admin_user, admin_token = asyncio.run(
-            create_test_user(db_path, "oidc-admin-001", "admin-user", role="admin")
-        )
-        normal_user, user_token = asyncio.run(
-            create_test_user(db_path, "oidc-user-001", "normal-user", role="user")
-        )
-        guest_user, guest_token = asyncio.run(
-            create_test_user(db_path, "oidc-guest-001", "guest-user", role="guest")
-        )
+        admin_user, admin_token = asyncio.run(create_test_user(db_path, "oidc-admin-001", "admin-user", role="admin"))
+        normal_user, user_token = asyncio.run(create_test_user(db_path, "oidc-user-001", "normal-user", role="user"))
+        guest_user, guest_token = asyncio.run(create_test_user(db_path, "oidc-guest-001", "guest-user", role="guest"))
         print(f"\n  Created test users:")
         print(f"    admin: {admin_user.username} (token: {admin_token[:16]}...)")
         print(f"    user:  {normal_user.username} (token: {user_token[:16]}...)")
@@ -594,9 +610,7 @@ def main():
             print(f"\n  FAILED: {e}")
 
         # Re-create user token for logout test
-        _, user_token2 = asyncio.run(
-            create_test_user(db_path, "oidc-user-001", "normal-user")
-        )
+        _, user_token2 = asyncio.run(create_test_user(db_path, "oidc-user-001", "normal-user"))
         try:
             test_logout(user_token2)
             results.append(("Logout", True))

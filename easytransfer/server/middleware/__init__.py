@@ -1,2 +1,0 @@
-"""Server middleware - authentication, etc."""
-

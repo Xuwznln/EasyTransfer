@@ -11,11 +11,11 @@ Usage:
 
 import asyncio
 import os
-import sys
-import time
-import tempfile
-import subprocess
 import signal
+import subprocess
+import sys
+import tempfile
+import time
 from pathlib import Path
 
 # Add project root to path
@@ -64,19 +64,23 @@ def start_server(storage_path: Path, config_path: Path) -> subprocess.Popen:
     import json
 
     env = os.environ.copy()
-    env["EASYTRANSFER_STORAGE_PATH"] = str(storage_path)
-    env["EASYTRANSFER_STATE_BACKEND"] = "memory"
-    env["EASYTRANSFER_AUTH_ENABLED"] = "false"
-    env["EASYTRANSFER_PORT"] = str(DEFAULT_PORT)
+    env["ETRANSFER_STORAGE_PATH"] = str(storage_path)
+    env["ETRANSFER_STATE_BACKEND"] = "memory"
+    env["ETRANSFER_AUTH_ENABLED"] = "false"
+    env["ETRANSFER_PORT"] = str(DEFAULT_PORT)
     # JSON array format for pydantic-settings
-    env["EASYTRANSFER_ADVERTISED_ENDPOINTS"] = json.dumps(SERVER_IPS)
+    env["ETRANSFER_ADVERTISED_ENDPOINTS"] = json.dumps(SERVER_IPS)
 
     proc = subprocess.Popen(
         [
-            sys.executable, "-m", "uvicorn",
-            "easytransfer.server.main:app",
-            "--host", "0.0.0.0",
-            "--port", str(DEFAULT_PORT),
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "etransfer.server.main:app",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            str(DEFAULT_PORT),
         ],
         env=env,
         stdout=subprocess.PIPE,
@@ -86,6 +90,7 @@ def start_server(storage_path: Path, config_path: Path) -> subprocess.Popen:
 
     # Wait for server to be ready
     import httpx
+
     for i in range(30):
         try:
             resp = httpx.get(f"http://{CLIENT_CONNECT_IP}:{DEFAULT_PORT}/api/health", timeout=2)
@@ -119,7 +124,8 @@ def test_endpoint_discovery():
     """Test that client can discover all endpoints."""
     from rich.console import Console
     from rich.table import Table
-    from easytransfer.client.tus_client import EasyTransferClient
+
+    from etransfer.client.tus_client import EasyTransferClient
 
     console = Console()
     console.print("\n[bold cyan]═══ Test 1: Endpoint Discovery ═══[/bold cyan]\n")
@@ -167,7 +173,8 @@ def test_endpoint_connectivity():
     """Test connectivity to all endpoints."""
     from rich.console import Console
     from rich.table import Table
-    from easytransfer.client.tus_client import EasyTransferClient
+
+    from etransfer.client.tus_client import EasyTransferClient
 
     console = Console()
     console.print("\n[bold cyan]═══ Test 2: Endpoint Connectivity ═══[/bold cyan]\n")
@@ -199,7 +206,9 @@ def test_endpoint_connectivity():
         console.print(f"\n[green]Reachable:[/green] {results['reachable_count']}/{results['total_count']}")
 
         if results["best_reachable"]:
-            console.print(f"[yellow]Best Endpoint:[/yellow] {results['best_reachable']} ({results['best_latency_ms']:.2f}ms)")
+            console.print(
+                f"[yellow]Best Endpoint:[/yellow] {results['best_reachable']} ({results['best_latency_ms']:.2f}ms)"
+            )
 
         return results
 
@@ -207,8 +216,9 @@ def test_endpoint_connectivity():
 def test_upload_with_endpoint_selection(storage_path: Path):
     """Test uploading a file using selected endpoint."""
     from rich.console import Console
-    from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
-    from easytransfer.client.tus_client import EasyTransferClient
+    from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+
+    from etransfer.client.tus_client import EasyTransferClient
 
     console = Console()
     console.print("\n[bold cyan]═══ Test 3: Upload with Endpoint Selection ═══[/bold cyan]\n")
@@ -254,7 +264,8 @@ def test_upload_with_endpoint_selection(storage_path: Path):
 def test_download_endpoints():
     """Test downloading file info from multiple endpoints."""
     from rich.console import Console
-    from easytransfer.client.tus_client import EasyTransferClient
+
+    from etransfer.client.tus_client import EasyTransferClient
 
     console = Console()
     console.print("\n[bold cyan]═══ Test 4: File Listing from Multiple Endpoints ═══[/bold cyan]\n")
@@ -275,7 +286,8 @@ def test_traffic_monitoring():
     """Test real-time traffic monitoring."""
     from rich.console import Console
     from rich.table import Table
-    from easytransfer.client.tus_client import EasyTransferClient
+
+    from etransfer.client.tus_client import EasyTransferClient
 
     console = Console()
     console.print("\n[bold cyan]═══ Test 5: Traffic Monitoring ═══[/bold cyan]\n")
@@ -313,12 +325,14 @@ def main():
 
     console = Console()
 
-    console.print(Panel.fit(
-        "[bold green]EasyTransfer Multi-IP Load Balancing Test[/bold green]\n\n"
-        f"Server IPs: {', '.join(SERVER_IPS)}\n"
-        f"Client connects to: {CLIENT_CONNECT_IP}:{DEFAULT_PORT}",
-        title="Test Configuration",
-    ))
+    console.print(
+        Panel.fit(
+            "[bold green]EasyTransfer Multi-IP Load Balancing Test[/bold green]\n\n"
+            f"Server IPs: {', '.join(SERVER_IPS)}\n"
+            f"Client connects to: {CLIENT_CONNECT_IP}:{DEFAULT_PORT}",
+            title="Test Configuration",
+        )
+    )
 
     # Create temp directory
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -349,6 +363,7 @@ def main():
         except Exception as e:
             console.print(f"\n[red]Test failed: {e}[/red]")
             import traceback
+
             traceback.print_exc()
         finally:
             if server_proc:

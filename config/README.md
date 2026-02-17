@@ -28,15 +28,15 @@ et server start
 
 | 优先级 | 路径 | 说明 |
 |---|---|---|
-| 1 | `$EASYTRANSFER_CONFIG` | 环境变量，最高优先 |
+| 1 | `$ETRANSFER_CONFIG` | 环境变量，最高优先 |
 | 2 | `./config.yaml` | 当前工作目录 |
 | 3 | `./config/config.yaml` | config 子文件夹 |
-| 4 | `~/.easytransfer/server.yaml` | 用户 home 目录 |
+| 4 | `~/.etransfer/server.yaml` | 用户 home 目录 |
 
 这意味着：
 - `et server start` — 自动发现，无需 `--config`
-- `uvicorn easytransfer.server.main:app` — 同样自动发现
-- `EASYTRANSFER_CONFIG=/path/to/config.yaml uvicorn ...` — 显式指定
+- `uvicorn etransfer.server.main:app` — 同样自动发现
+- `ETRANSFER_CONFIG=/path/to/config.yaml uvicorn ...` — 显式指定
 - `et server start --config /path/to/config.yaml` — 手动覆盖
 
 启动时会打印加载了哪个配置文件：
@@ -115,7 +115,7 @@ user_system:
 > **安全提示**: `client_secret` 建议通过环境变量传入，而非写在配置文件中：
 >
 > ```bash
-> export EASYTRANSFER_OIDC_CLIENT_SECRET="your-client-secret"
+> export ETRANSFER_OIDC_CLIENT_SECRET="your-client-secret"
 > ```
 
 > **callback_url 说明**:
@@ -140,9 +140,9 @@ user_system:
     # mysql:
     #   host: 127.0.0.1
     #   port: 3306
-    #   user: easytransfer
-    #   password: ""      # 建议用环境变量 EASYTRANSFER_MYSQL_PASSWORD
-    #   database: easytransfer
+    #   user: etransfer
+    #   password: ""      # 建议用环境变量 ETRANSFER_MYSQL_PASSWORD
+    #   database: etransfer
 ```
 
 #### 4.4 配置角色配额
@@ -201,15 +201,15 @@ retention:
 
 ```bash
 # 配置服务器（域名+端口 或 IP+端口）
-easytransfer setup 192.168.1.100:8765
-easytransfer setup myserver.example.com:8765
+etransfer setup 192.168.1.100:8765
+etransfer setup myserver.example.com:8765
 
 # 查看当前配置
-easytransfer status
+etransfer status
 ```
 
 `setup` 命令会自动探测连通性，并检查服务器是否需要登录。
-配置保存在 `~/.easytransfer/client.json`。
+配置保存在 `~/.etransfer/client.json`。
 
 ### 第二步：登录（如果服务器要求）
 
@@ -217,7 +217,7 @@ easytransfer status
 
 ```bash
 # 发起登录 — CLI 会输出一个 URL，手动在浏览器中打开
-easytransfer login
+etransfer login
 
 # CLI 输出类似：
 # ┌─ Login ──────────────────────────────────────────────┐
@@ -267,45 +267,45 @@ et login
 
 ```bash
 # 查看用户信息和配额
-easytransfer whoami
+etransfer whoami
 
 # 上传文件
-easytransfer upload ./myfile.zip
+etransfer upload ./myfile.zip
 
 # 下载文件
-easytransfer download <file-id>
+etransfer download <file-id>
 
 # 查看文件列表
-easytransfer list
+etransfer list
 
 # 查看服务器信息
-easytransfer info
+etransfer info
 
 # 登出
-easytransfer logout
+etransfer logout
 ```
 
 ---
 
 ## 环境变量覆盖
 
-所有配置项均可通过环境变量覆盖，前缀为 `EASYTRANSFER_`：
+所有配置项均可通过环境变量覆盖，前缀为 `ETRANSFER_`：
 
 | 环境变量 | 说明 |
 |---|---|
-| `EASYTRANSFER_OIDC_ISSUER_URL` | OIDC 提供商地址 |
-| `EASYTRANSFER_OIDC_CLIENT_ID` | OIDC Client ID |
-| `EASYTRANSFER_OIDC_CLIENT_SECRET` | OIDC Client Secret |
-| `EASYTRANSFER_OIDC_CALLBACK_URL` | OIDC 回调地址 |
-| `EASYTRANSFER_OIDC_SCOPE` | OIDC Scope |
-| `EASYTRANSFER_USER_SYSTEM_ENABLED` | 是否启用用户系统 |
-| `EASYTRANSFER_USER_DB_BACKEND` | 数据库后端 (sqlite/mysql) |
-| `EASYTRANSFER_MYSQL_PASSWORD` | MySQL 密码 |
-| `EASYTRANSFER_MAX_STORAGE_SIZE` | 最大存储限额 (支持 100MB, 1GB 等) |
-| `EASYTRANSFER_ADVERTISED_ENDPOINTS` | 广播 IP 列表 (JSON 数组或逗号分隔) |
+| `ETRANSFER_OIDC_ISSUER_URL` | OIDC 提供商地址 |
+| `ETRANSFER_OIDC_CLIENT_ID` | OIDC Client ID |
+| `ETRANSFER_OIDC_CLIENT_SECRET` | OIDC Client Secret |
+| `ETRANSFER_OIDC_CALLBACK_URL` | OIDC 回调地址 |
+| `ETRANSFER_OIDC_SCOPE` | OIDC Scope |
+| `ETRANSFER_USER_SYSTEM_ENABLED` | 是否启用用户系统 |
+| `ETRANSFER_USER_DB_BACKEND` | 数据库后端 (sqlite/mysql) |
+| `ETRANSFER_MYSQL_PASSWORD` | MySQL 密码 |
+| `ETRANSFER_MAX_STORAGE_SIZE` | 最大存储限额 (支持 100MB, 1GB 等) |
+| `ETRANSFER_ADVERTISED_ENDPOINTS` | 广播 IP 列表 (JSON 数组或逗号分隔) |
 
-| `EASYTRANSFER_CONFIG` | 配置文件路径（优先于自动发现） |
-| `EASYTRANSFER_CONFIG_WATCH` | 是否监听配置变更 (true/false) |
+| `ETRANSFER_CONFIG` | 配置文件路径（优先于自动发现） |
+| `ETRANSFER_CONFIG_WATCH` | 是否监听配置变更 (true/false) |
 
 ---
 
