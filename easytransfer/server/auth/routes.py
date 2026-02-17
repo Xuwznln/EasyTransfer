@@ -1,0 +1,544 @@
+"""User system API routes with OIDC integration."""
+
+import json
+import secrets
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+
+from easytransfer.server.auth.db import UserDB
+from easytransfer.server.auth.models import (
+    GroupCreate,
+    GroupPublic,
+    GroupTable,
+    Role,
+    RoleQuota,
+    UserPublic,
+)
+from easytransfer.server.auth.oauth import OIDCProvider
+
+
+def _group_to_public(g: GroupTable, member_count: int = 0) -> GroupPublic:
+    """Convert GroupTable (with quota_json string) to GroupPublic."""
+    quota_data = json.loads(g.quota_json) if g.quota_json else {}
+    return GroupPublic(
+        id=g.id,
+        name=g.name,
+        description=g.description,
+        quota=RoleQuota(**quota_data),
+        member_count=member_count,
+    )
+
+LOGIN_SUCCESS_HTML = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>EasyTransfer - Login Successful</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }}
+        .card {{
+            background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+            border-radius: 16px; padding: 40px; text-align: center;
+            max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }}
+        .token {{ 
+            background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;
+            font-family: monospace; font-size: 13px; word-break: break-all;
+            margin: 16px 0; cursor: pointer; user-select: all;
+        }}
+        .hint {{ opacity: 0.8; font-size: 14px; }}
+        h2 {{ margin-bottom: 8px; }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Login Successful</h2>
+        <p>Welcome, <strong>{username}</strong>!</p>
+        <p class="hint">Your session token (click to select):</p>
+        <div class="token" onclick="this.select ? this.select() : null">{token}</div>
+        <p class="hint">
+            If you logged in via CLI, this window can be closed.<br>
+            The CLI will pick up your session automatically.
+        </p>
+    </div>
+</body>
+</html>"""
+
+
+def _derive_callback_url(request: Request) -> str:
+    """Derive the OIDC callback URL from the incoming request's Host header.
+
+    This is essential for SSH / remote scenarios where the configured
+    callback_url might be ``localhost`` but the client accessed the
+    server via a public IP or domain name.  The OIDC provider's
+    redirect_uri must match, so the user should register the public
+    URL in their OIDC provider settings.
+    """
+    host = request.headers.get("host") or request.url.netloc
+    scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+    return f"{scheme}://{host}/api/users/callback"
+
+
+def create_user_router(
+    user_db: UserDB,
+    oidc: Optional[OIDCProvider],
+    role_quotas: dict[str, RoleQuota],
+) -> APIRouter:
+    """Create user system API router.
+
+    Args:
+        user_db: User database instance
+        oidc: OIDC provider (None if disabled)
+        role_quotas: Role -> quota mapping from config
+    """
+    router = APIRouter(tags=["Users"])
+
+    # ── Helpers ────────────────────────────────────────────────
+
+    def _effective_callback_url(request: Request) -> str:
+        """Return the callback URL to use for this request.
+
+        If oidc.callback_url is explicitly configured (non-localhost),
+        use it.  Otherwise derive from the request Host header so that
+        remote / SSH scenarios work out of the box.
+        """
+        if oidc and oidc.callback_url:
+            from urllib.parse import urlparse
+            parsed = urlparse(oidc.callback_url)
+            host = parsed.hostname or ""
+            if host not in ("", "localhost", "127.0.0.1", "0.0.0.0"):
+                return oidc.callback_url
+        return _derive_callback_url(request)
+
+    async def _get_current_user(request: Request):
+        """Extract current user from session token.
+
+        Accepts: Authorization: Bearer <token> or X-Session-Token header.
+        """
+        token = None
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+        if not token:
+            token = request.headers.get("X-Session-Token")
+        if not token:
+            return None
+
+        session = await user_db.get_session(token)
+        if not session:
+            return None
+
+        user = await user_db.get_user(session.user_id)
+        if user and not user.is_active:
+            return None
+        return user
+
+    async def _require_user(request: Request):
+        user = await _get_current_user(request)
+        if not user:
+            raise HTTPException(
+                401,
+                "Authentication required. "
+                "GET /api/users/login-info for login instructions."
+            )
+        return user
+
+    async def _require_admin(request: Request):
+        user = await _require_user(request)
+        if user.role != Role.ADMIN and not user.is_admin:
+            raise HTTPException(403, "Admin access required")
+        return user
+
+    # ── Login info (server-driven config for clients) ──────────
+
+    @router.get("/api/users/login-info")
+    async def login_info():
+        """Return login configuration for clients.
+
+        Clients call this to discover how to authenticate.
+        The response includes the OIDC authorize URL that the client
+        should open in a browser.
+        """
+        if not oidc:
+            raise HTTPException(501, "OIDC authentication not configured")
+        return oidc.get_login_info()
+
+    # ── CLI login flow ─────────────────────────────────────────
+
+    @router.post("/api/users/login/start")
+    async def login_start(request: Request):
+        """Start a CLI login flow.
+
+        Returns a unique state and the authorize URL.
+        The CLI opens the URL in a browser, then polls
+        GET /api/users/login/poll/{state} until login completes.
+
+        The callback URL is auto-derived from the request Host header
+        so that remote / SSH scenarios work without special config.
+        """
+        if not oidc:
+            raise HTTPException(501, "OIDC authentication not configured")
+
+        callback = _effective_callback_url(request)
+        state = secrets.token_urlsafe(24)
+        await user_db.create_pending_login(state, redirect_uri=callback)
+        authorize_url = oidc.get_authorize_url(
+            state=state, redirect_uri=callback,
+        )
+
+        return {
+            "state": state,
+            "authorize_url": authorize_url,
+            "poll_endpoint": f"/api/users/login/poll/{state}",
+            "callback_url": callback,
+            "message": "Open authorize_url in your browser to complete login.",
+        }
+
+    @router.get("/api/users/login/poll/{state}")
+    async def login_poll(state: str):
+        """Poll for CLI login completion.
+
+        Returns completed=true and token once the OAuth callback fires.
+        """
+        pending = await user_db.get_pending_login(state)
+        if not pending:
+            raise HTTPException(404, "Login state not found or expired")
+
+        if pending.completed and pending.session_token:
+            session = await user_db.get_session(pending.session_token)
+            if session:
+                user = await user_db.get_user(session.user_id)
+                return {
+                    "completed": True,
+                    "token": pending.session_token,
+                    "expires_at": (
+                        session.expires_at.isoformat()
+                        if session.expires_at else None
+                    ),
+                    "user": (await _user_to_public(user)).model_dump() if user else None,
+                }
+
+        return {"completed": False}
+
+    # ── OAuth redirect login (browser) ─────────────────────────
+
+    @router.get("/api/users/login")
+    async def login_redirect(request: Request):
+        """Redirect browser to OIDC provider login page."""
+        if not oidc:
+            raise HTTPException(501, "OIDC authentication not configured")
+        callback = _effective_callback_url(request)
+        state = secrets.token_urlsafe(24)
+        await user_db.create_pending_login(state, redirect_uri=callback)
+        url = oidc.get_authorize_url(state=state, redirect_uri=callback)
+        return RedirectResponse(url)
+
+    # ── OAuth callback ─────────────────────────────────────────
+
+    @router.get("/api/users/callback")
+    async def oauth_callback(
+        request: Request,
+        code: str,
+        state: Optional[str] = None,
+    ):
+        """Handle OIDC callback.
+
+        Exchanges code for token, fetches user profile + groups,
+        creates/updates local user, returns session token.
+
+        If there's a matching pending_login (CLI flow), it
+        completes it so the CLI poll picks up the token.
+        """
+        if not oidc:
+            raise HTTPException(501, "OIDC authentication not configured")
+
+        # Determine the redirect_uri used in the authorize request.
+        # Must match exactly for code exchange to succeed.
+        redirect_uri = None
+        if state:
+            pending = await user_db.get_pending_login(state)
+            if pending and pending.redirect_uri:
+                redirect_uri = pending.redirect_uri
+        if not redirect_uri:
+            redirect_uri = _effective_callback_url(request)
+
+        # Exchange code for access token
+        try:
+            token_data = await oidc.exchange_code(code, redirect_uri=redirect_uri)
+        except Exception as e:
+            raise HTTPException(400, f"OIDC token exchange failed: {e}")
+
+        access_token = token_data.get("access_token")
+        if not access_token:
+            raise HTTPException(400, "No access_token in OIDC response")
+
+        # Fetch user profile
+        try:
+            userinfo = await oidc.get_user_info(access_token)
+        except Exception as e:
+            raise HTTPException(400, f"Failed to fetch user profile: {e}")
+
+        # Extract standard OIDC claims
+        oidc_sub = str(userinfo.get("sub") or userinfo.get("id") or "")
+        if not oidc_sub:
+            raise HTTPException(400, "No user ID (sub) in OIDC response")
+
+        username = (
+            userinfo.get("preferred_username")
+            or userinfo.get("name")
+            or userinfo.get("displayName")
+            or oidc_sub
+        )
+        display_name = userinfo.get("displayName") or userinfo.get("name")
+        email = userinfo.get("email")
+        avatar_url = (
+            userinfo.get("picture")
+            or userinfo.get("avatar")
+            or userinfo.get("permanentAvatar")
+        )
+        is_admin = bool(userinfo.get("isAdmin", False))
+
+        # Extract groups (provider-specific: array of strings or objects)
+        groups_raw = userinfo.get("groups") or []
+        if isinstance(groups_raw, list):
+            group_names = []
+            for g in groups_raw:
+                if isinstance(g, str):
+                    group_names.append(g)
+                elif isinstance(g, dict):
+                    group_names.append(g.get("name", str(g.get("id", ""))))
+        else:
+            group_names = []
+
+        # Upsert user and sync groups
+        user = await user_db.upsert_user(
+            oidc_sub=oidc_sub,
+            username=username,
+            display_name=display_name,
+            email=email,
+            avatar_url=avatar_url,
+            is_admin=is_admin,
+            groups=group_names,
+        )
+
+        # Create session
+        session = await user_db.create_session(user.id)
+
+        # If this is a CLI-initiated login, complete the pending login.
+        # Re-fetch pending (may have been fetched above for redirect_uri,
+        # but we need a fresh check for the completion flag).
+        if state:
+            pending_login = await user_db.get_pending_login(state)
+            if pending_login and not pending_login.completed:
+                await user_db.complete_pending_login(state, session.token)
+
+        # Return HTML page with token (for browser-based flow)
+        return HTMLResponse(
+            LOGIN_SUCCESS_HTML.format(
+                username=user.username,
+                token=session.token,
+            )
+        )
+
+    # ── Session / profile ──────────────────────────────────────
+
+    @router.get("/api/users/me")
+    async def get_me(request: Request):
+        """Get current user's profile and effective quota."""
+        user = await _require_user(request)
+        _rq = getattr(request.app.state, "parsed_role_quotas", role_quotas)
+        quota = await user_db.get_effective_quota(user, _rq)
+        pub = await _user_to_public(user)
+        pub.effective_quota = quota
+        return pub
+
+    @router.post("/api/users/logout")
+    async def logout(request: Request):
+        """Invalidate current session."""
+        token = _extract_token(request)
+        if token:
+            await user_db.delete_session(token)
+        return {"message": "Logged out"}
+
+    # ── Admin: user management ─────────────────────────────────
+
+    @router.get("/api/users")
+    async def list_users(request: Request):
+        """List all users (admin only)."""
+        await _require_admin(request)
+        users = await user_db.list_users()
+        pub_list = []
+        for u in users:
+            pub_list.append((await _user_to_public(u)).model_dump())
+        return {"users": pub_list}
+
+    @router.put("/api/users/{user_id}/role")
+    async def set_role(user_id: int, role: str, request: Request):
+        """Set a user's role (admin only)."""
+        await _require_admin(request)
+        if role not in [r.value for r in Role]:
+            raise HTTPException(
+                400, f"Invalid role: {role}. Use: guest, user, admin"
+            )
+        user = await user_db.set_user_role(user_id, role)
+        if not user:
+            raise HTTPException(404, "User not found")
+        return {"message": f"Role set to {role}", "user_id": user_id}
+
+    @router.put("/api/users/{user_id}/active")
+    async def set_active(user_id: int, active: bool, request: Request):
+        """Enable/disable a user (admin only)."""
+        await _require_admin(request)
+        user = await user_db.set_user_active(user_id, active)
+        if not user:
+            raise HTTPException(404, "User not found")
+        if not active:
+            await user_db.delete_user_sessions(user_id)
+        return {
+            "message": f"User {'enabled' if active else 'disabled'}",
+            "user_id": user_id,
+        }
+
+    # ── Admin: group management ────────────────────────────────
+
+    @router.get("/api/groups")
+    async def list_groups(request: Request):
+        """List all groups and their quotas."""
+        await _require_user(request)
+        groups = await user_db.list_groups()
+        result = []
+        for g in groups:
+            count = await user_db.get_group_member_count(g.id)
+            result.append(_group_to_public(g, count))
+        return {"groups": [g.model_dump() for g in result]}
+
+    @router.post("/api/groups")
+    async def create_group(body: GroupCreate, request: Request):
+        """Create a group with quota config (admin only).
+
+        Groups are normally synced from the OIDC provider on login.
+        This endpoint allows admins to create groups ahead of time
+        or set quotas for groups that don't exist yet.
+        """
+        await _require_admin(request)
+        existing = await user_db.get_group_by_name(body.name)
+        if existing:
+            raise HTTPException(409, f"Group '{body.name}' already exists")
+        quota = RoleQuota(
+            max_storage_size=body.max_storage_size,
+            max_upload_size=body.max_upload_size,
+            upload_speed_limit=body.upload_speed_limit,
+            download_speed_limit=body.download_speed_limit,
+            default_retention=body.default_retention,
+            default_retention_ttl=body.default_retention_ttl,
+        )
+        group = await user_db.ensure_group(body.name, body.description)
+        group = await user_db.update_group_quota(group.id, quota)
+        return {"message": "Group created", "group": _group_to_public(group).model_dump()}
+
+    @router.put("/api/groups/{group_id}/quota")
+    async def update_group_quota(
+        group_id: int, body: GroupCreate, request: Request
+    ):
+        """Update a group's quota (admin only)."""
+        await _require_admin(request)
+        quota = RoleQuota(
+            max_storage_size=body.max_storage_size,
+            max_upload_size=body.max_upload_size,
+            upload_speed_limit=body.upload_speed_limit,
+            download_speed_limit=body.download_speed_limit,
+            default_retention=body.default_retention,
+            default_retention_ttl=body.default_retention_ttl,
+        )
+        group = await user_db.update_group_quota(group_id, quota)
+        if not group:
+            raise HTTPException(404, "Group not found")
+        return {"message": "Quota updated", "group": _group_to_public(group).model_dump()}
+
+    @router.delete("/api/groups/{group_id}")
+    async def delete_group(group_id: int, request: Request):
+        """Delete a group (admin only)."""
+        await _require_admin(request)
+        await user_db.delete_group(group_id)
+        return {"message": "Group deleted"}
+
+    @router.post("/api/groups/{group_id}/members/{user_id}")
+    async def add_member(group_id: int, user_id: int, request: Request):
+        """Add a user to a group (admin only)."""
+        await _require_admin(request)
+        group = await user_db.get_group(group_id)
+        if not group:
+            raise HTTPException(404, "Group not found")
+        user = await user_db.get_user(user_id)
+        if not user:
+            raise HTTPException(404, "User not found")
+        await user_db.add_user_to_group(user_id, group_id)
+        return {
+            "message": f"User {user.username} added to group {group.name}"
+        }
+
+    @router.delete("/api/groups/{group_id}/members/{user_id}")
+    async def remove_member(group_id: int, user_id: int, request: Request):
+        """Remove a user from a group (admin only)."""
+        await _require_admin(request)
+        await user_db.remove_user_from_group(user_id, group_id)
+        return {"message": "User removed from group"}
+
+    # ── Quota check endpoint ───────────────────────────────────
+
+    @router.get("/api/users/me/quota")
+    async def get_my_quota(request: Request):
+        """Get current user's effective quota and usage."""
+        user = await _require_user(request)
+        _rq = getattr(request.app.state, "parsed_role_quotas", role_quotas)
+        quota = await user_db.get_effective_quota(user, _rq)
+
+        usage_pct = None
+        if quota.max_storage_size:
+            usage_pct = round(
+                (user.storage_used / quota.max_storage_size) * 100, 2
+            )
+
+        return {
+            "storage_used": user.storage_used,
+            "quota": quota.model_dump(),
+            "usage_percent": usage_pct,
+            "is_over_quota": (
+                user.storage_used >= quota.max_storage_size
+                if quota.max_storage_size else False
+            ),
+        }
+
+    # ── Internal helpers ───────────────────────────────────────
+
+    async def _user_to_public(user, groups: Optional[list[str]] = None) -> UserPublic:
+        if groups is None:
+            groups = await user_db.get_user_group_names(user.id)
+        role_val = user.role.value if hasattr(user.role, "value") else user.role
+        return UserPublic(
+            id=user.id,
+            username=user.username,
+            display_name=user.display_name,
+            email=user.email,
+            avatar_url=user.avatar_url,
+            role=role_val,
+            is_active=user.is_active,
+            is_admin=user.is_admin,
+            storage_used=user.storage_used,
+            groups=groups,
+        )
+
+    def _extract_token(request: Request) -> Optional[str]:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            return auth_header[7:]
+        return request.headers.get("X-Session-Token")
+
+    return router
