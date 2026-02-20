@@ -229,8 +229,7 @@ class HotReloadTest:
             ok("TOKEN_V2 correctly rejected before reload")
 
         # Update config to add TOKEN_V2
-        self._write_config(
-            f"""\
+        self._write_config(f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -249,8 +248,7 @@ class HotReloadTest:
             network:
               advertised_endpoints:
                 - "10.0.0.1"
-        """
-        )
+        """)
 
         # Trigger reload using TOKEN_V1
         with self._http(TOKEN_V1) as h:
@@ -272,8 +270,7 @@ class HotReloadTest:
         banner("TEST 5: Hot-Reload Storage Quota")
 
         # Update config to change quota
-        self._write_config(
-            f"""\
+        self._write_config(f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -292,8 +289,7 @@ class HotReloadTest:
             network:
               advertised_endpoints:
                 - "10.0.0.1"
-        """
-        )
+        """)
 
         with self._http() as h:
             r = h.post("/api/admin/reload-config")
@@ -313,8 +309,7 @@ class HotReloadTest:
         """Change default retention policy via hot-reload."""
         banner("TEST 6: Hot-Reload Retention Policy")
 
-        self._write_config(
-            f"""\
+        self._write_config(f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -334,8 +329,7 @@ class HotReloadTest:
             network:
               advertised_endpoints:
                 - "10.0.0.1"
-        """
-        )
+        """)
 
         with self._http() as h:
             r = h.post("/api/admin/reload-config")
@@ -350,8 +344,7 @@ class HotReloadTest:
         """Change advertised endpoints via hot-reload."""
         banner("TEST 7: Hot-Reload Advertised Endpoints")
 
-        self._write_config(
-            f"""\
+        self._write_config(f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -373,8 +366,7 @@ class HotReloadTest:
                 - "10.0.0.1"
                 - "10.0.0.2"
                 - "10.0.0.3"
-        """
-        )
+        """)
 
         with self._http() as h:
             r = h.post("/api/admin/reload-config")
@@ -397,8 +389,7 @@ class HotReloadTest:
         banner("TEST 8: Static Fields Remain Unchanged")
 
         # Change port in config (static — should not take effect)
-        self._write_config(
-            f"""\
+        self._write_config(f"""\
             server:
               host: 0.0.0.0
               port: 9999
@@ -419,8 +410,7 @@ class HotReloadTest:
                 - "10.0.0.1"
                 - "10.0.0.2"
                 - "10.0.0.3"
-        """
-        )
+        """)
 
         with self._http() as h:
             r = h.post("/api/admin/reload-config")
@@ -467,8 +457,7 @@ class HotReloadTest:
         banner("TEST 10: Reload With Token Replacement")
 
         # Config with only TOKEN_V3 (removing V1 and V2)
-        self._write_config(
-            f"""\
+        self._write_config(f"""\
             server:
               host: 0.0.0.0
               port: {PORT}
@@ -486,8 +475,7 @@ class HotReloadTest:
             network:
               advertised_endpoints:
                 - "10.0.0.1"
-        """
-        )
+        """)
 
         # Use TOKEN_V2 to trigger reload (it will remove itself)
         with self._http(TOKEN_V2) as h:

@@ -279,9 +279,7 @@ def test_discover_none_when_nothing_exists(monkeypatch, tmp_path):
 
 def test_load_explicit_path(tmp_path):
     cfg = tmp_path / "test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         server:
           port: 7777
           workers: 2
@@ -297,9 +295,7 @@ def test_load_explicit_path(tmp_path):
         network:
           advertised_endpoints:
             - "10.0.0.5"
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
     assert settings.port == 7777
     assert settings.workers == 2
@@ -333,15 +329,11 @@ def test_load_defaults_when_no_config(monkeypatch, tmp_path):
 
 def test_load_config_watch_fields(tmp_path):
     cfg = tmp_path / "test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         server:
           config_watch: true
           config_watch_interval: 10
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
     assert settings.config_watch is True
     assert settings.config_watch_interval == 10
@@ -374,29 +366,21 @@ def test_reload_no_changes(tmp_path):
 
 def test_reload_detects_token_change(tmp_path):
     cfg = tmp_path / "reload_test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         auth:
           tokens:
             - "token-v1"
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
     assert settings.auth_tokens == ["token-v1"]
 
     # Modify the file
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         auth:
           tokens:
             - "token-v2"
             - "token-v3"
-    """
-        )
-    )
+    """))
     changes = reload_hot_settings(settings)
     assert "auth_tokens" in changes
     assert changes["auth_tokens"][0] == ["token-v1"]
@@ -407,25 +391,17 @@ def test_reload_detects_token_change(tmp_path):
 
 def test_reload_detects_quota_change(tmp_path):
     cfg = tmp_path / "reload_test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         storage:
           max_storage_size: 1GB
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
     assert settings.max_storage_size == 1 * 1024**3
 
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         storage:
           max_storage_size: 5GB
-    """
-        )
-    )
+    """))
     changes = reload_hot_settings(settings)
     assert "max_storage_size" in changes
     assert settings.max_storage_size == 5 * 1024**3
@@ -433,25 +409,17 @@ def test_reload_detects_quota_change(tmp_path):
 
 def test_reload_detects_retention_change(tmp_path):
     cfg = tmp_path / "reload_test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         retention:
           default: permanent
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
     assert settings.default_retention == "permanent"
 
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         retention:
           default: download_once
-    """
-        )
-    )
+    """))
     changes = reload_hot_settings(settings)
     assert "default_retention" in changes
     assert settings.default_retention == "download_once"
@@ -459,27 +427,19 @@ def test_reload_detects_retention_change(tmp_path):
 
 def test_reload_detects_advertised_endpoints_change(tmp_path):
     cfg = tmp_path / "reload_test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         network:
           advertised_endpoints:
             - "10.0.0.1"
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
 
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         network:
           advertised_endpoints:
             - "10.0.0.1"
             - "10.0.0.2"
-    """
-        )
-    )
+    """))
     changes = reload_hot_settings(settings)
     assert "advertised_endpoints" in changes
     assert settings.advertised_endpoints == ["10.0.0.1", "10.0.0.2"]
@@ -487,28 +447,20 @@ def test_reload_detects_advertised_endpoints_change(tmp_path):
 
 def test_reload_detects_role_quotas_change(tmp_path):
     cfg = tmp_path / "reload_test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         user_system:
           role_quotas:
             user:
               max_storage_size: 1073741824
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
 
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         user_system:
           role_quotas:
             user:
               max_storage_size: 5368709120
-    """
-        )
-    )
+    """))
     changes = reload_hot_settings(settings)
     assert "role_quotas" in changes
     assert settings.role_quotas["user"]["max_storage_size"] == 5368709120
@@ -516,32 +468,24 @@ def test_reload_detects_role_quotas_change(tmp_path):
 
 def test_reload_ignores_static_fields(tmp_path):
     cfg = tmp_path / "reload_test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         server:
           port: 8765
         auth:
           tokens:
             - "t1"
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
     assert settings.port == 8765
 
     # Change both a hot field and a static field
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         server:
           port: 9999
         auth:
           tokens:
             - "t2"
-    """
-        )
-    )
+    """))
     changes = reload_hot_settings(settings)
     # Only auth_tokens should change, not port
     assert "auth_tokens" in changes
@@ -552,9 +496,7 @@ def test_reload_ignores_static_fields(tmp_path):
 
 def test_reload_multiple_fields_at_once(tmp_path):
     cfg = tmp_path / "reload_test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         auth:
           tokens:
             - "old-token"
@@ -566,14 +508,10 @@ def test_reload_multiple_fields_at_once(tmp_path):
         network:
           advertised_endpoints:
             - "1.1.1.1"
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
 
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         auth:
           tokens:
             - "new-token"
@@ -586,9 +524,7 @@ def test_reload_multiple_fields_at_once(tmp_path):
           advertised_endpoints:
             - "2.2.2.2"
             - "3.3.3.3"
-    """
-        )
-    )
+    """))
     changes = reload_hot_settings(settings)
     assert len(changes) == 5
     assert settings.auth_tokens == ["new-token"]
@@ -617,22 +553,16 @@ def test_reload_config_file_deleted(tmp_path):
 
 def test_reload_token_retention_policies(tmp_path):
     cfg = tmp_path / "reload_test.yaml"
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         retention:
           token_policies:
             guest-tok:
               default_retention: download_once
-    """
-        )
-    )
+    """))
     settings = load_server_settings(cfg)
     assert "guest-tok" in settings.token_retention_policies
 
-    cfg.write_text(
-        textwrap.dedent(
-            """\
+    cfg.write_text(textwrap.dedent("""\
         retention:
           token_policies:
             guest-tok:
@@ -640,9 +570,7 @@ def test_reload_token_retention_policies(tmp_path):
               default_ttl: 3600
             vip-tok:
               default_retention: permanent
-    """
-        )
-    )
+    """))
     changes = reload_hot_settings(settings)
     assert "token_retention_policies" in changes
     assert "vip-tok" in settings.token_retention_policies
