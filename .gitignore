@@ -24,6 +24,9 @@ env/
 # Cursor
 .cursor/
 
+# Node (prettier cache)
+node_modules/
+
 # mypy
 .mypy_cache/
 

@@ -237,25 +237,25 @@ storage = client.get_storage_status()
 
 ### 环境变量
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `ETRANSFER_HOST` | 绑定地址 | `0.0.0.0` |
-| `ETRANSFER_PORT` | 端口 | `8765` |
-| `ETRANSFER_STORAGE_PATH` | 文件存储路径 | `./storage` |
-| `ETRANSFER_STATE_BACKEND` | 状态后端 (`memory`/`file`/`redis`) | `file` |
-| `ETRANSFER_REDIS_URL` | Redis 地址 | `redis://localhost:6379/0` |
-| `ETRANSFER_AUTH_ENABLED` | 启用鉴权 | `true` |
-| `ETRANSFER_AUTH_TOKENS` | Token 列表（JSON 数组） | `[]` |
-| `ETRANSFER_MAX_UPLOAD_SIZE` | 单文件大小限制 | 不限 |
-| `ETRANSFER_MAX_STORAGE_SIZE` | 总存储配额（支持 `100MB`/`1GB` 等） | 不限 |
-| `ETRANSFER_CHUNK_SIZE` | 默认切片大小 | `4194304` (4MB) |
-| `ETRANSFER_ADVERTISED_ENDPOINTS` | 广播 IP 列表（JSON 数组或逗号分隔） | 自动检测 |
-| `ETRANSFER_DEFAULT_RETENTION` | 全局默认缓存策略 | `permanent` |
-| `ETRANSFER_DEFAULT_RETENTION_TTL` | 全局默认 TTL（秒，仅 `ttl` 策略） | 不限 |
-| `ETRANSFER_TOKEN_RETENTION_POLICIES` | 按 Token 设置缓存策略（JSON） | `{}` |
-| `ETRANSFER_CLEANUP_INTERVAL` | 清理任务间隔（秒） | `3600` |
-| `ETRANSFER_UPLOAD_EXPIRATION_HOURS` | 未完成上传过期时间（小时） | `24` |
-| `ETRANSFER_CORS_ORIGINS` | CORS 允许来源 | `["*"]` |
+| 变量                                 | 说明                                | 默认值                     |
+| ------------------------------------ | ----------------------------------- | -------------------------- |
+| `ETRANSFER_HOST`                     | 绑定地址                            | `0.0.0.0`                  |
+| `ETRANSFER_PORT`                     | 端口                                | `8765`                     |
+| `ETRANSFER_STORAGE_PATH`             | 文件存储路径                        | `./storage`                |
+| `ETRANSFER_STATE_BACKEND`            | 状态后端 (`memory`/`file`/`redis`)  | `file`                     |
+| `ETRANSFER_REDIS_URL`                | Redis 地址                          | `redis://localhost:6379/0` |
+| `ETRANSFER_AUTH_ENABLED`             | 启用鉴权                            | `true`                     |
+| `ETRANSFER_AUTH_TOKENS`              | Token 列表（JSON 数组）             | `[]`                       |
+| `ETRANSFER_MAX_UPLOAD_SIZE`          | 单文件大小限制                      | 不限                       |
+| `ETRANSFER_MAX_STORAGE_SIZE`         | 总存储配额（支持 `100MB`/`1GB` 等） | 不限                       |
+| `ETRANSFER_CHUNK_SIZE`               | 默认切片大小                        | `4194304` (4MB)            |
+| `ETRANSFER_ADVERTISED_ENDPOINTS`     | 广播 IP 列表（JSON 数组或逗号分隔） | 自动检测                   |
+| `ETRANSFER_DEFAULT_RETENTION`        | 全局默认缓存策略                    | `permanent`                |
+| `ETRANSFER_DEFAULT_RETENTION_TTL`    | 全局默认 TTL（秒，仅 `ttl` 策略）   | 不限                       |
+| `ETRANSFER_TOKEN_RETENTION_POLICIES` | 按 Token 设置缓存策略（JSON）       | `{}`                       |
+| `ETRANSFER_CLEANUP_INTERVAL`         | 清理任务间隔（秒）                  | `3600`                     |
+| `ETRANSFER_UPLOAD_EXPIRATION_HOURS`  | 未完成上传过期时间（小时）          | `24`                       |
+| `ETRANSFER_CORS_ORIGINS`             | CORS 允许来源                       | `["*"]`                    |
 
 ### 配置文件
 
@@ -295,11 +295,11 @@ curl -X POST http://localhost:8765/api/admin/reload-config \
 
 三种策略：
 
-| 策略 | 说明 | 适用场景 |
-|------|------|----------|
-| `permanent` | 永久保存，手动删除 | 一般文件存储（默认） |
+| 策略            | 说明                               | 适用场景                 |
+| --------------- | ---------------------------------- | ------------------------ |
+| `permanent`     | 永久保存，手动删除                 | 一般文件存储（默认）     |
 | `download_once` | 首次完整下载后自动删除（阅后即焚） | 一次性分享、敏感文件传输 |
-| `ttl` | 上传完成后按设定时间自动过期清理 | 临时文件、限时分享 |
+| `ttl`           | 上传完成后按设定时间自动过期清理   | 临时文件、限时分享       |
 
 **优先级**：客户端显式指定 > Token 级策略 > 全局默认
 
@@ -319,12 +319,12 @@ export ETRANSFER_TOKEN_RETENTION_POLICIES='{
 
 下载响应头：
 
-| Header | 说明 |
-|--------|------|
-| `X-Retention-Policy` | 当前策略 |
+| Header                | 说明         |
+| --------------------- | ------------ |
+| `X-Retention-Policy`  | 当前策略     |
 | `X-Retention-Expires` | TTL 到期时间 |
 | `X-Retention-Warning` | 阅后即焚提醒 |
-| `X-Download-Count` | 下载次数 |
+| `X-Download-Count`    | 下载次数     |
 
 ### 存储配额
 
@@ -335,6 +335,7 @@ export ETRANSFER_MAX_STORAGE_SIZE=10GB
 ```
 
 超限时：
+
 - 服务端返回 `HTTP 507 Storage Quota Exceeded`
 - 客户端自动轮询 `/api/storage` 等待空间释放
 - 空间释放后自动从断点恢复上传
@@ -343,65 +344,65 @@ export ETRANSFER_MAX_STORAGE_SIZE=10GB
 
 ### TUS 协议
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `OPTIONS` | `/tus` | 获取 TUS 服务端能力 |
-| `POST` | `/tus` | 创建上传（支持 `creation-with-upload`） |
-| `HEAD` | `/tus/{file_id}` | 获取上传进度 |
-| `PATCH` | `/tus/{file_id}` | 上传切片 |
-| `DELETE` | `/tus/{file_id}` | 终止上传 |
+| 方法      | 路径             | 说明                                    |
+| --------- | ---------------- | --------------------------------------- |
+| `OPTIONS` | `/tus`           | 获取 TUS 服务端能力                     |
+| `POST`    | `/tus`           | 创建上传（支持 `creation-with-upload`） |
+| `HEAD`    | `/tus/{file_id}` | 获取上传进度                            |
+| `PATCH`   | `/tus/{file_id}` | 上传切片                                |
+| `DELETE`  | `/tus/{file_id}` | 终止上传                                |
 
 ### 文件管理
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `GET` | `/api/files` | 文件列表（分页） |
-| `GET` | `/api/files/{file_id}` | 文件详情（含缓存策略） |
-| `GET` | `/api/files/{file_id}/download` | 下载文件（支持 Range） |
-| `GET` | `/api/files/{file_id}/info/download` | 下载信息 |
-| `DELETE` | `/api/files/{file_id}` | 删除文件 |
-| `POST` | `/api/files/cleanup` | 手动触发清理过期文件 |
+| 方法     | 路径                                 | 说明                   |
+| -------- | ------------------------------------ | ---------------------- |
+| `GET`    | `/api/files`                         | 文件列表（分页）       |
+| `GET`    | `/api/files/{file_id}`               | 文件详情（含缓存策略） |
+| `GET`    | `/api/files/{file_id}/download`      | 下载文件（支持 Range） |
+| `GET`    | `/api/files/{file_id}/info/download` | 下载信息               |
+| `DELETE` | `/api/files/{file_id}`               | 删除文件               |
+| `POST`   | `/api/files/cleanup`                 | 手动触发清理过期文件   |
 
 ### 服务端信息
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `GET` | `/api/health` | 健康检查 |
-| `GET` | `/api/info` | 服务器信息 |
-| `GET` | `/api/stats` | 详细统计 |
+| 方法  | 路径             | 说明                       |
+| ----- | ---------------- | -------------------------- |
+| `GET` | `/api/health`    | 健康检查                   |
+| `GET` | `/api/info`      | 服务器信息                 |
+| `GET` | `/api/stats`     | 详细统计                   |
 | `GET` | `/api/endpoints` | 可用端点列表（含流量负载） |
-| `GET` | `/api/storage` | 存储配额与使用状态 |
-| `GET` | `/api/traffic` | 实时流量数据 |
+| `GET` | `/api/storage`   | 存储配额与使用状态         |
+| `GET` | `/api/traffic`   | 实时流量数据               |
 
 ### 认证
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
+| 方法   | 路径               | 说明           |
+| ------ | ------------------ | -------------- |
 | `POST` | `/api/auth/verify` | 验证 API Token |
 
 所有需认证的请求在 Header 中携带 `X-API-Token: <token>` 或 `Authorization: Bearer <session_token>`。
 
 ### 用户系统（OIDC）
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `GET` | `/api/users/login-info` | 获取登录配置（客户端用） |
-| `POST` | `/api/users/login/start` | CLI 登录流程：返回 state 和授权 URL |
-| `GET` | `/api/users/login/poll/{state}` | CLI 轮询登录结果 |
-| `GET` | `/api/users/login` | 浏览器直接跳转 OIDC 登录 |
-| `GET` | `/api/users/callback` | OIDC 回调（code 换 token） |
-| `GET` | `/api/users/me` | 当前用户信息 + 有效配额 |
-| `GET` | `/api/users/me/quota` | 当前用户配额使用情况 |
-| `POST` | `/api/users/logout` | 注销（失效 Session） |
-| `GET` | `/api/users` | 用户列表（Admin） |
-| `PUT` | `/api/users/{id}/role` | 设置角色（Admin） |
-| `PUT` | `/api/users/{id}/active` | 启用/禁用用户（Admin） |
-| `GET` | `/api/groups` | 群组列表 |
-| `POST` | `/api/groups` | 创建群组 + 配额（Admin） |
-| `PUT` | `/api/groups/{id}/quota` | 更新群组配额（Admin） |
-| `DELETE` | `/api/groups/{id}` | 删除群组（Admin） |
-| `POST` | `/api/groups/{gid}/members/{uid}` | 添加成员（Admin） |
-| `DELETE` | `/api/groups/{gid}/members/{uid}` | 移除成员（Admin） |
+| 方法     | 路径                              | 说明                                |
+| -------- | --------------------------------- | ----------------------------------- |
+| `GET`    | `/api/users/login-info`           | 获取登录配置（客户端用）            |
+| `POST`   | `/api/users/login/start`          | CLI 登录流程：返回 state 和授权 URL |
+| `GET`    | `/api/users/login/poll/{state}`   | CLI 轮询登录结果                    |
+| `GET`    | `/api/users/login`                | 浏览器直接跳转 OIDC 登录            |
+| `GET`    | `/api/users/callback`             | OIDC 回调（code 换 token）          |
+| `GET`    | `/api/users/me`                   | 当前用户信息 + 有效配额             |
+| `GET`    | `/api/users/me/quota`             | 当前用户配额使用情况                |
+| `POST`   | `/api/users/logout`               | 注销（失效 Session）                |
+| `GET`    | `/api/users`                      | 用户列表（Admin）                   |
+| `PUT`    | `/api/users/{id}/role`            | 设置角色（Admin）                   |
+| `PUT`    | `/api/users/{id}/active`          | 启用/禁用用户（Admin）              |
+| `GET`    | `/api/groups`                     | 群组列表                            |
+| `POST`   | `/api/groups`                     | 创建群组 + 配额（Admin）            |
+| `PUT`    | `/api/groups/{id}/quota`          | 更新群组配额（Admin）               |
+| `DELETE` | `/api/groups/{id}`                | 删除群组（Admin）                   |
+| `POST`   | `/api/groups/{gid}/members/{uid}` | 添加成员（Admin）                   |
+| `DELETE` | `/api/groups/{gid}/members/{uid}` | 移除成员（Admin）                   |
 
 **CLI 登录流程：**
 
@@ -423,15 +424,15 @@ etransfer logout
 
 ## 测试脚本
 
-| 脚本 | 说明 |
-|------|------|
-| `scripts/test_multi_ip.py` | 多 IP 负载均衡测试 |
-| `scripts/test_large_partial.py` | 大文件/部分上传下载测试 |
-| `scripts/test_quota_resume.py` | 存储配额 + 自动恢复上传测试 |
-| `scripts/test_retention.py` | 文件缓存策略测试（permanent/download_once/ttl） |
-| `scripts/test_user_system.py` | 用户系统测试（OIDC + 角色 + 群组 + 配额） |
-| `scripts/test_hot_reload.py` | 配置自动发现 + 热重载集成测试 |
-| `scripts/run_client_demo.py` | 客户端演示 |
+| 脚本                            | 说明                                            |
+| ------------------------------- | ----------------------------------------------- |
+| `scripts/test_multi_ip.py`      | 多 IP 负载均衡测试                              |
+| `scripts/test_large_partial.py` | 大文件/部分上传下载测试                         |
+| `scripts/test_quota_resume.py`  | 存储配额 + 自动恢复上传测试                     |
+| `scripts/test_retention.py`     | 文件缓存策略测试（permanent/download_once/ttl） |
+| `scripts/test_user_system.py`   | 用户系统测试（OIDC + 角色 + 群组 + 配额）       |
+| `scripts/test_hot_reload.py`    | 配置自动发现 + 热重载集成测试                   |
+| `scripts/run_client_demo.py`    | 客户端演示                                      |
 
 运行测试：
 

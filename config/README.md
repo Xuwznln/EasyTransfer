@@ -26,20 +26,22 @@ et server start
 
 服务端启动时会按以下顺序自动搜索配置文件（先找到先用）：
 
-| 优先级 | 路径 | 说明 |
-|---|---|---|
-| 1 | `$ETRANSFER_CONFIG` | 环境变量，最高优先 |
-| 2 | `./config.yaml` | 当前工作目录 |
-| 3 | `./config/config.yaml` | config 子文件夹 |
-| 4 | `~/.etransfer/server.yaml` | 用户 home 目录 |
+| 优先级 | 路径                       | 说明               |
+| ------ | -------------------------- | ------------------ |
+| 1      | `$ETRANSFER_CONFIG`        | 环境变量，最高优先 |
+| 2      | `./config.yaml`            | 当前工作目录       |
+| 3      | `./config/config.yaml`     | config 子文件夹    |
+| 4      | `~/.etransfer/server.yaml` | 用户 home 目录     |
 
 这意味着：
+
 - `et server start` — 自动发现，无需 `--config`
 - `uvicorn etransfer.server.main:app` — 同样自动发现
 - `ETRANSFER_CONFIG=/path/to/config.yaml uvicorn ...` — 显式指定
 - `et server start --config /path/to/config.yaml` — 手动覆盖
 
 启动时会打印加载了哪个配置文件：
+
 ```
 [Config] Loaded config from /home/user/project/config/config.yaml
 ```
@@ -107,8 +109,8 @@ user_system:
   oidc:
     issuer_url: "https://your-oidc-provider.example.com"
     client_id: "your-client-id"
-    client_secret: "your-client-secret"      # 敏感！建议用环境变量
-    callback_url: ""   # 留空 = 自动从请求推导（推荐）
+    client_secret: "your-client-secret" # 敏感！建议用环境变量
+    callback_url: "" # 留空 = 自动从请求推导（推荐）
     scope: "openid profile email"
 ```
 
@@ -119,6 +121,7 @@ user_system:
 > ```
 
 > **callback_url 说明**:
+>
 > - **留空（推荐）**：服务端自动从客户端请求的 Host 头推导回调地址。
 >   例如客户端通过 `http://192.168.1.100:8765` 访问，回调自动变为
 >   `http://192.168.1.100:8765/api/users/callback`。SSH 远程场景下自动生效。
@@ -132,36 +135,36 @@ user_system:
 默认使用 SQLite（零配置），也支持 MySQL：
 
 ```yaml
-  database:
-    backend: sqlite       # 默认，数据保存在 storage/users.db
-    # backend: mysql      # 生产环境推荐 MySQL
+database:
+  backend: sqlite # 默认，数据保存在 storage/users.db
+  # backend: mysql      # 生产环境推荐 MySQL
 
-    # MySQL 配置（backend=mysql 时生效）
-    # mysql:
-    #   host: 127.0.0.1
-    #   port: 3306
-    #   user: etransfer
-    #   password: ""      # 建议用环境变量 ETRANSFER_MYSQL_PASSWORD
-    #   database: etransfer
+  # MySQL 配置（backend=mysql 时生效）
+  # mysql:
+  #   host: 127.0.0.1
+  #   port: 3306
+  #   user: etransfer
+  #   password: ""      # 建议用环境变量 ETRANSFER_MYSQL_PASSWORD
+  #   database: etransfer
 ```
 
 #### 4.4 配置角色配额
 
 ```yaml
-  role_quotas:
-    admin:
-      max_storage_size: null       # 无限制
-      max_upload_size: null
-      upload_speed_limit: null
-      download_speed_limit: null
-    user:
-      max_storage_size: 10737418240  # 10 GB
-      max_upload_size: 5368709120     # 5 GB
-    guest:
-      max_storage_size: 1073741824   # 1 GB
-      max_upload_size: 536870912      # 512 MB
-      upload_speed_limit: 10485760    # 10 MB/s
-      download_speed_limit: 10485760  # 10 MB/s
+role_quotas:
+  admin:
+    max_storage_size: null # 无限制
+    max_upload_size: null
+    upload_speed_limit: null
+    download_speed_limit: null
+  user:
+    max_storage_size: 10737418240 # 10 GB
+    max_upload_size: 5368709120 # 5 GB
+  guest:
+    max_storage_size: 1073741824 # 1 GB
+    max_upload_size: 536870912 # 512 MB
+    upload_speed_limit: 10485760 # 10 MB/s
+    download_speed_limit: 10485760 # 10 MB/s
 ```
 
 用户最终配额 = max(角色配额, 所属各组配额)，取最宽松值。
@@ -170,9 +173,9 @@ user_system:
 
 ```yaml
 network:
-  interfaces: []            # 空 = 自动检测
+  interfaces: [] # 空 = 自动检测
   prefer_ipv4: true
-  advertised_endpoints:     # 显式指定客户端可用的 IP
+  advertised_endpoints: # 显式指定客户端可用的 IP
     - "192.168.1.100"
     - "10.0.0.100"
 ```
@@ -181,7 +184,7 @@ network:
 
 ```yaml
 retention:
-  default: permanent        # permanent / download_once / ttl
+  default: permanent # permanent / download_once / ttl
   # default_ttl: 86400      # TTL 策略的默认过期时间（秒）
   # token_policies:
   #   guest-token:
@@ -291,17 +294,17 @@ etransfer logout
 
 所有配置项均可通过环境变量覆盖，前缀为 `ETRANSFER_`：
 
-| 环境变量 | 说明 |
-|---|---|
-| `ETRANSFER_OIDC_ISSUER_URL` | OIDC 提供商地址 |
-| `ETRANSFER_OIDC_CLIENT_ID` | OIDC Client ID |
-| `ETRANSFER_OIDC_CLIENT_SECRET` | OIDC Client Secret |
-| `ETRANSFER_OIDC_CALLBACK_URL` | OIDC 回调地址 |
-| `ETRANSFER_OIDC_SCOPE` | OIDC Scope |
-| `ETRANSFER_USER_SYSTEM_ENABLED` | 是否启用用户系统 |
-| `ETRANSFER_USER_DB_BACKEND` | 数据库后端 (sqlite/mysql) |
-| `ETRANSFER_MYSQL_PASSWORD` | MySQL 密码 |
-| `ETRANSFER_MAX_STORAGE_SIZE` | 最大存储限额 (支持 100MB, 1GB 等) |
+| 环境变量                         | 说明                               |
+| -------------------------------- | ---------------------------------- |
+| `ETRANSFER_OIDC_ISSUER_URL`      | OIDC 提供商地址                    |
+| `ETRANSFER_OIDC_CLIENT_ID`       | OIDC Client ID                     |
+| `ETRANSFER_OIDC_CLIENT_SECRET`   | OIDC Client Secret                 |
+| `ETRANSFER_OIDC_CALLBACK_URL`    | OIDC 回调地址                      |
+| `ETRANSFER_OIDC_SCOPE`           | OIDC Scope                         |
+| `ETRANSFER_USER_SYSTEM_ENABLED`  | 是否启用用户系统                   |
+| `ETRANSFER_USER_DB_BACKEND`      | 数据库后端 (sqlite/mysql)          |
+| `ETRANSFER_MYSQL_PASSWORD`       | MySQL 密码                         |
+| `ETRANSFER_MAX_STORAGE_SIZE`     | 最大存储限额 (支持 100MB, 1GB 等)  |
 | `ETRANSFER_ADVERTISED_ENDPOINTS` | 广播 IP 列表 (JSON 数组或逗号分隔) |
 
 | `ETRANSFER_CONFIG` | 配置文件路径（优先于自动发现） |
@@ -313,16 +316,17 @@ etransfer logout
 
 部分配置项支持**不重启服务**即时生效：
 
-| 可热重载 | 需要重启 |
-|---|---|
-| `role_quotas` 角色配额 | `host`, `port`, `workers` |
-| `auth_tokens` API Token | `storage_path`, `state_backend` |
-| `token_retention_policies` | `oidc_*` OIDC 配置 |
-| `default_retention` / `default_retention_ttl` | `user_db_backend`, `mysql_*` |
-| `advertised_endpoints` | |
-| `max_storage_size` 存储限额 | |
+| 可热重载                                      | 需要重启                        |
+| --------------------------------------------- | ------------------------------- |
+| `role_quotas` 角色配额                        | `host`, `port`, `workers`       |
+| `auth_tokens` API Token                       | `storage_path`, `state_backend` |
+| `token_retention_policies`                    | `oidc_*` OIDC 配置              |
+| `default_retention` / `default_retention_ttl` | `user_db_backend`, `mysql_*`    |
+| `advertised_endpoints`                        |                                 |
+| `max_storage_size` 存储限额                   |                                 |
 
 > **注意**：
+>
 > - 群组配额 (Group Quota) 存储在数据库中，通过 API `PUT /api/groups/{id}/quota` 管理，天然即时生效。
 > - `advertised_endpoints` 是客户端可见的 IP 列表（可热重载），但 **监听 IP/端口** 由 uvicorn 在启动时绑定，无法在线变更。如需监听新 IP，必须重启服务。
 
@@ -355,7 +359,7 @@ curl -X POST http://localhost:8765/api/admin/reload-config \
 ```yaml
 server:
   config_watch: true
-  config_watch_interval: 30  # 检查间隔（秒）
+  config_watch_interval: 30 # 检查间隔（秒）
 ```
 
 ### 查看配置状态
@@ -371,11 +375,11 @@ curl http://localhost:8765/api/admin/config-status \
 
 ## 文件说明
 
-| 文件 | 用途 | 是否提交到 Git |
-|---|---|---|
-| `config.example.yaml` (项目根目录) | 配置模板，包含所有可用选项及注释 | 是 |
-| `config/config.yaml` | 实际部署配置，含真实密钥 | **否** |
-| `config/README.md` | 本文件，配置流程说明 | 是 |
+| 文件                               | 用途                             | 是否提交到 Git |
+| ---------------------------------- | -------------------------------- | -------------- |
+| `config.example.yaml` (项目根目录) | 配置模板，包含所有可用选项及注释 | 是             |
+| `config/config.yaml`               | 实际部署配置，含真实密钥         | **否**         |
+| `config/README.md`                 | 本文件，配置流程说明             | 是             |
 
 ---
 

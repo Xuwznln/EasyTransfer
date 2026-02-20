@@ -30,7 +30,7 @@ auth:
 
 # File retention policies
 retention:
-  default: permanent     # permanent / download_once / ttl
+  default: permanent # permanent / download_once / ttl
   # default_ttl: 86400  # Default TTL in seconds (for ttl policy)
   # token_policies:
   #   guest-token:
@@ -41,7 +41,7 @@ retention:
 
 # Network
 network:
-  interfaces: []          # Empty = auto-detect
+  interfaces: [] # Empty = auto-detect
   prefer_ipv4: true
   advertised_endpoints: [] # Explicit IPs for clients
 
@@ -56,7 +56,7 @@ user_system:
   oidc:
     issuer_url: "https://your-oidc-provider.example.com"
     client_id: "your-client-id"
-    client_secret: ""     # Keep secret! Use env ETRANSFER_OIDC_CLIENT_SECRET
+    client_secret: "" # Keep secret! Use env ETRANSFER_OIDC_CLIENT_SECRET
     # callback_url: Leave empty or set to your public URL.
     # When empty/localhost, EasyTransfer auto-derives the callback from the
     # incoming request's Host header (works for SSH remote access).
@@ -66,8 +66,8 @@ user_system:
 
   # Database backend for user/group/session storage
   database:
-    backend: sqlite       # sqlite (default) or mysql
-    path: ""              # SQLite file path (default: <storage>/users.db)
+    backend: sqlite # sqlite (default) or mysql
+    path: "" # SQLite file path (default: <storage>/users.db)
 
     # MySQL settings (when backend=mysql)
     # mysql:
@@ -81,20 +81,20 @@ user_system:
   # Users get the most permissive quota from their role AND groups
   role_quotas:
     admin:
-      max_storage_size: null       # unlimited
+      max_storage_size: null # unlimited
       max_upload_size: null
       upload_speed_limit: null
       download_speed_limit: null
     user:
-      max_storage_size: 10737418240  # 10 GB
-      max_upload_size: 5368709120     # 5 GB
+      max_storage_size: 10737418240 # 10 GB
+      max_upload_size: 5368709120 # 5 GB
       upload_speed_limit: null
       download_speed_limit: null
     guest:
-      max_storage_size: 1073741824   # 1 GB
-      max_upload_size: 536870912      # 512 MB
-      upload_speed_limit: 10485760    # 10 MB/s
-      download_speed_limit: 10485760  # 10 MB/s
+      max_storage_size: 1073741824 # 1 GB
+      max_upload_size: 536870912 # 512 MB
+      upload_speed_limit: 10485760 # 10 MB/s
+      download_speed_limit: 10485760 # 10 MB/s
 
 # CORS
 cors:
