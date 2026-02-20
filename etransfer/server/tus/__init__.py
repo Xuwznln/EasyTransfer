@@ -10,7 +10,7 @@ __all__ = [
 # Lazy imports
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> object:
     if name == "TusHandler":
         from etransfer.server.tus.handler import TusHandler
 

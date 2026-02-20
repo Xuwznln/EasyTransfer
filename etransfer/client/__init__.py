@@ -10,7 +10,7 @@ __all__ = [
 # Lazy imports
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> object:
     if name in ("EasyTransferClient", "EasyTransferUploader"):
         from etransfer.client.tus_client import EasyTransferClient, EasyTransferUploader
 

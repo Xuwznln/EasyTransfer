@@ -7,8 +7,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
-import aiofiles
-import aiofiles.os
+import aiofiles  # type: ignore[import-untyped]
+import aiofiles.os  # type: ignore[import-untyped]
 
 from etransfer.server.services.backends.interface import StateBackend
 
@@ -35,7 +35,7 @@ class FileStateBackend(StateBackend):
         value = await backend.get("key")
     """
 
-    def __init__(self, storage_path: Path):
+    def __init__(self, storage_path: Path) -> None:
         """Initialize file backend.
 
         Args:
@@ -114,7 +114,7 @@ class FileStateBackend(StateBackend):
         expires_at = entry.get("expires_at")
         if expires_at is None:
             return False
-        return time.time() > expires_at
+        return time.time() > expires_at  # type: ignore[no-any-return]
 
     async def get(self, key: str) -> Optional[str]:
         """Get value by key."""
@@ -126,7 +126,7 @@ class FileStateBackend(StateBackend):
                 del self._data[key]
                 self._dirty = True
                 return None
-            return entry["value"]
+            return entry["value"]  # type: ignore[no-any-return]
 
     async def set(
         self,
@@ -143,9 +143,9 @@ class FileStateBackend(StateBackend):
                 if existing and not self._is_expired(existing):
                     return False
 
-            entry = {"value": value, "expires_at": None}
+            entry = {"value": value, "expires_at": None}  # type: ignore[assignment]
             if ex is not None:
-                entry["expires_at"] = time.time() + ex
+                entry["expires_at"] = time.time() + ex  # type: ignore[assignment]
 
             self._data[key] = entry
             self._dirty = True

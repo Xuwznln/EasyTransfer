@@ -17,7 +17,6 @@ EasyTransfer 传输测试脚本
     python tests/test_transfer.py --large      # 大文件测试模式 (1GB)
 """
 
-import asyncio
 import hashlib
 import os
 import shutil
@@ -236,7 +235,7 @@ def download_file(
         start_time = time.time()
 
         downloader = ChunkDownloader(server_url, token=token)
-        info = downloader.get_file_info(file_id)
+        _ = downloader.get_file_info(file_id)
 
         success = downloader.download_file(file_id, output_path)
 
@@ -350,7 +349,7 @@ def run_upload_while_download(
 
     上传一个大文件，同时尝试下载已上传的部分。
     """
-    print(f"\n[5] 边上传边下载测试...")
+    print("\n[5] 边上传边下载测试...")
 
     import threading
 
@@ -380,7 +379,7 @@ def run_upload_while_download(
 
         # 尝试获取文件列表
         try:
-            downloader = ChunkDownloader(server_url, token=token)
+            _ = ChunkDownloader(server_url, token=token)
 
             # 轮询等待文件出现
             for _ in range(30):  # 最多等待30秒
@@ -426,10 +425,10 @@ def run_upload_while_download(
         print(f"  {result}")
 
     if file_id:
-        print(f"  ✓ 边上传边下载测试完成")
+        print("  ✓ 边上传边下载测试完成")
         return True
     else:
-        print(f"  ✗ 边上传边下载测试失败")
+        print("  ✗ 边上传边下载测试失败")
         return False
 
 
@@ -440,7 +439,7 @@ def run_retention_policies(
     token: str,
 ) -> bool:
     """测试缓存策略 (permanent / download_once / ttl)。"""
-    print(f"\n[6] 缓存策略测试...")
+    print("\n[6] 缓存策略测试...")
     import httpx
 
     all_ok = True
@@ -510,7 +509,7 @@ def run_retention_policies(
         meta = r.json().get("metadata", {})
         print(f"    过期时间: {meta.get('retention_expires_at', 'N/A')}")
     else:
-        print(f"    ✗ TTL 文件创建异常")
+        print("    ✗ TTL 文件创建异常")
         all_ok = False
 
     print("    等待 TTL 过期 (5秒)...")
@@ -540,7 +539,7 @@ def run_tests():
     print("=" * 60)
     print("EasyTransfer 传输测试")
     print("=" * 60)
-    print(f"配置:")
+    print("配置:")
     print(f"  - 测试文件数量: {TestConfig.NUM_FILES}")
     print(f"  - 每个文件大小: {TestConfig.FILE_SIZE_MB} MB")
     print(f"  - 服务端地址: http://{TestConfig.SERVER_HOST}:{TestConfig.SERVER_PORT}")
@@ -550,13 +549,13 @@ def run_tests():
     print(f"\n[0] 检查后端: {TestConfig.STATE_BACKEND}...")
     if not check_backend_available(TestConfig.STATE_BACKEND):
         if TestConfig.STATE_BACKEND == "redis":
-            print(f"  ✗ Redis 连接失败")
+            print("  ✗ Redis 连接失败")
             print("  请先启动 Redis: redis-server")
             print("  或使用其他后端: --backend memory 或 --backend file")
         else:
             print(f"  ✗ 后端 {TestConfig.STATE_BACKEND} 不可用")
         return False
-    print(f"  ✓ 后端可用")
+    print("  ✓ 后端可用")
 
     # 创建临时目录
     test_dir = Path(tempfile.mkdtemp(prefix="etransfer_test_"))

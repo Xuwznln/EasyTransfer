@@ -11,7 +11,7 @@ try:
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
-    redis = None
+    redis = None  # type: ignore[assignment]
 
 
 class RedisStateBackend(StateBackend):
@@ -35,7 +35,7 @@ class RedisStateBackend(StateBackend):
         value = await backend.get("key")
     """
 
-    def __init__(self, redis_url: str = "redis://localhost:6379/0"):
+    def __init__(self, redis_url: str = "redis://localhost:6379/0") -> None:
         """Initialize Redis backend.
 
         Args:
@@ -58,7 +58,7 @@ class RedisStateBackend(StateBackend):
         self._client = redis.Redis(connection_pool=self._pool)
 
         # Test connection
-        await self._client.ping()
+        await self._client.ping()  # type: ignore[misc]
         print(f"[{self.name}] Connected to {self.redis_url}")
 
     async def disconnect(self) -> None:
@@ -72,7 +72,7 @@ class RedisStateBackend(StateBackend):
 
     async def get(self, key: str) -> Optional[str]:
         """Get value by key."""
-        return await self._client.get(key)
+        return await self._client.get(key)  # type: ignore[no-any-return, union-attr]
 
     async def set(
         self,
@@ -82,16 +82,16 @@ class RedisStateBackend(StateBackend):
         nx: bool = False,
     ) -> bool:
         """Set a key-value pair."""
-        result = await self._client.set(key, value, ex=ex, nx=nx)
+        result = await self._client.set(key, value, ex=ex, nx=nx)  # type: ignore[union-attr]
         return result is not None
 
     async def delete(self, key: str) -> int:
         """Delete a key."""
-        return await self._client.delete(key)
+        return await self._client.delete(key)  # type: ignore[no-any-return, union-attr]
 
     async def exists(self, key: str) -> bool:
         """Check if key exists."""
-        return await self._client.exists(key) > 0
+        return await self._client.exists(key) > 0  # type: ignore[no-any-return, union-attr]
 
     async def scan(
         self,
@@ -100,20 +100,20 @@ class RedisStateBackend(StateBackend):
         count: int = 100,
     ) -> tuple[int, list[str]]:
         """Scan keys matching pattern."""
-        return await self._client.scan(cursor, match=match, count=count)
+        return await self._client.scan(cursor, match=match, count=count)  # type: ignore[no-any-return, union-attr]
 
     async def incr(self, key: str, amount: int = 1) -> int:
         """Increment a numeric value."""
-        return await self._client.incrby(key, amount)
+        return await self._client.incrby(key, amount)  # type: ignore[no-any-return, union-attr]
 
     async def expire(self, key: str, seconds: int) -> bool:
         """Set expiration on a key."""
-        return await self._client.expire(key, seconds)
+        return await self._client.expire(key, seconds)  # type: ignore[no-any-return, union-attr]
 
     async def ping(self) -> bool:
         """Check if Redis is available."""
         try:
-            await self._client.ping()
+            await self._client.ping()  # type: ignore[misc, union-attr]
             return True
         except Exception:
             return False

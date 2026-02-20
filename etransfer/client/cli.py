@@ -48,7 +48,7 @@ def _load_client_config() -> dict:
     """Load the client configuration from disk."""
     if CLIENT_CONFIG_FILE.exists():
         try:
-            return json.loads(CLIENT_CONFIG_FILE.read_text(encoding="utf-8"))
+            return json.loads(CLIENT_CONFIG_FILE.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
         except (json.JSONDecodeError, OSError):
             return {}
     return {}
@@ -81,7 +81,7 @@ def _get_server_url() -> str:
     if not url:
         print_error("Server not configured. Run [bold]etransfer setup <address>[/bold] first.")
         raise typer.Exit(1)
-    return url
+    return url  # type: ignore[no-any-return]
 
 
 def _get_token() -> Optional[str]:
@@ -95,7 +95,7 @@ def format_size(size: int) -> str:
     for unit in ["B", "KB", "MB", "GB", "TB"]:
         if size < 1024:
             return f"{size:.1f} {unit}"
-        size /= 1024
+        size /= 1024  # type: ignore[assignment]
     return f"{size:.1f} PB"
 
 
@@ -119,22 +119,22 @@ def create_transfer_progress() -> Progress:
     )
 
 
-def print_success(message: str):
+def print_success(message: str) -> None:
     """Print success message."""
     console.print(f"[bold green]✓[/bold green] {message}")
 
 
-def print_error(message: str):
+def print_error(message: str) -> None:
     """Print error message."""
     console.print(f"[bold red]✗[/bold red] {message}")
 
 
-def print_info(message: str):
+def print_info(message: str) -> None:
     """Print info message."""
     console.print(f"[bold blue]ℹ[/bold blue] {message}")
 
 
-def print_warning(message: str):
+def print_warning(message: str) -> None:
     """Print warning message."""
     console.print(f"[bold yellow]⚠[/bold yellow] {message}")
 
@@ -145,7 +145,7 @@ def setup(
         ...,
         help="Server address (host:port or http://host:port)",
     ),
-):
+) -> None:
     """Configure the EasyTransfer server address.
 
     This is the first step before using any other command.
@@ -244,7 +244,7 @@ def upload(
         "--wait-on-quota/--no-wait-on-quota",
         help="Auto-wait and resume when storage quota is full",
     ),
-):
+) -> None:
     """Upload a file to the server."""
     server = _get_server_url()
     token = token or _get_token()
@@ -283,10 +283,10 @@ def upload(
         from etransfer.client.tus_client import EasyTransferClient
 
         with create_transfer_progress() as progress:
-            task = progress.add_task(f"[cyan]Uploading", total=file_size)
+            task = progress.add_task("[cyan]Uploading", total=file_size)
             start_time = time.time()
 
-            def update_progress(uploaded: int, total: int):
+            def update_progress(uploaded: int, total: int) -> None:
                 progress.update(task, completed=uploaded)
 
             with EasyTransferClient(server, token=token, chunk_size=chunk_size) as client:
@@ -303,7 +303,7 @@ def upload(
         avg_speed = file_size / elapsed if elapsed > 0 else 0
 
         console.print()
-        print_success(f"Upload complete!")
+        print_success("Upload complete!")
         console.print(f"   [dim]Time: {elapsed:.1f}s | Avg Speed: {format_size(int(avg_speed))}/s[/dim]")
 
         if location:
@@ -341,7 +341,7 @@ def download(
         "--no-cache",
         help="Disable local chunk cache",
     ),
-):
+) -> None:
     """Download a file from the server."""
     server = _get_server_url()
     token = token or _get_token()
@@ -379,10 +379,10 @@ def download(
             output_path = output
 
         with create_transfer_progress() as progress:
-            task = progress.add_task(f"[cyan]Downloading", total=info.available_size)
+            task = progress.add_task("[cyan]Downloading", total=info.available_size)
             start_time = time.time()
 
-            def update_progress(downloaded: int, total: int):
+            def update_progress(downloaded: int, total: int) -> None:
                 progress.update(task, completed=downloaded)
 
             success = downloader.download_file(
@@ -397,7 +397,7 @@ def download(
 
         console.print()
         if success:
-            print_success(f"Download complete!")
+            print_success("Download complete!")
             console.print(f"   [dim]Time: {elapsed:.1f}s | Avg Speed: {format_size(int(avg_speed))}/s[/dim]")
             console.print(f"   [dim]Saved to: [bold]{output_path}[/bold][/dim]")
         else:
@@ -426,7 +426,7 @@ def list_files(
         "--all/--complete",
         help="Show all files or only complete",
     ),
-):
+) -> None:
     """List files on the server."""
     server = _get_server_url()
     token = token or _get_token()
@@ -509,7 +509,7 @@ def info(
         help="API token (overrides saved session)",
         envvar="ETRANSFER_TOKEN",
     ),
-):
+) -> None:
     """Get server information."""
     server = _get_server_url()
     token = token or _get_token()
@@ -577,7 +577,7 @@ def login(
         "--timeout",
         help="Login timeout in seconds",
     ),
-):
+) -> None:
     """Login via OIDC (server-driven).
 
     Queries the configured server for its authentication requirements,
@@ -687,7 +687,7 @@ def whoami(
         help="Session token (overrides saved session)",
         envvar="ETRANSFER_TOKEN",
     ),
-):
+) -> None:
     """Show current user info and quota."""
     import httpx
 
@@ -758,7 +758,7 @@ def whoami(
 
 
 @app.command()
-def logout():
+def logout() -> None:
     """Logout and invalidate session."""
     import httpx
 
@@ -789,7 +789,7 @@ def logout():
 
 
 @app.command("status")
-def client_status():
+def client_status() -> None:
     """Show current client configuration and session status."""
     cfg = _load_client_config()
 
@@ -819,7 +819,7 @@ def client_status():
 
 
 @app.command()
-def gui():
+def gui() -> None:
     """Launch the graphical user interface."""
     console.print()
     print_info("Launching GUI...")
@@ -838,7 +838,7 @@ def gui():
 
 @server_app.command("start")
 def server_start(
-    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Bind host"),
+    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Bind host"),  # nosec B104
     port: int = typer.Option(DEFAULT_SERVER_PORT, "--port", "-p", help="Bind port"),
     workers: int = typer.Option(1, "--workers", "-w", help="Number of workers"),
     storage: Path = typer.Option(
@@ -863,7 +863,7 @@ def server_start(
         "-c",
         help="Config file path (auto-discovered if not set)",
     ),
-):
+) -> None:
     """Start the EasyTransfer server.
 
     If --config is not provided, the config file is auto-discovered from:
@@ -935,7 +935,7 @@ def _read_token_from_config_yaml() -> Optional[str]:
             cfg = yaml.safe_load(f) or {}
         tokens = cfg.get("auth", {}).get("tokens", [])
         if tokens and isinstance(tokens, list):
-            return tokens[0]
+            return tokens[0]  # type: ignore[no-any-return]
     except Exception:
         pass
     return None
@@ -959,7 +959,7 @@ def server_reload(
         "-c",
         help="Server config YAML to read token from (auto-discovered if omitted).",
     ),
-):
+) -> None:
     """Reload hot-reloadable server config without restarting.
 
     Sends a reload request to a running EasyTransfer server.
@@ -1008,7 +1008,7 @@ def server_reload(
             srv = cfg.get("server", {})
             h = srv.get("host", "127.0.0.1")
             p = srv.get("port", DEFAULT_SERVER_PORT)
-            if h == "0.0.0.0":
+            if h == "0.0.0.0":  # nosec B104
                 h = "127.0.0.1"
             yaml_address = f"http://{h}:{p}"
             console.print(f"[dim]Config: {cfg_path.resolve()}[/dim]")
@@ -1109,7 +1109,7 @@ def server_config(
         "-o",
         help="Output config file path",
     ),
-):
+) -> None:
     """Generate a sample server configuration file.
 
     The generated config is meant to be placed in the config/ folder:
@@ -1197,7 +1197,7 @@ cors:
 
 
 @app.command()
-def version():
+def version() -> None:
     """Show version information."""
     from etransfer import __version__
 
@@ -1205,7 +1205,7 @@ def version():
     text = Text()
     text.append("╭─────────────────────────────────────────╮\n", style="cyan")
     text.append("│", style="cyan")
-    text.append(f"  EasyTransfer                           ", style="bold white")
+    text.append("  EasyTransfer                           ", style="bold white")
     text.append("│\n", style="cyan")
     text.append("│", style="cyan")
     text.append(f"  Version: {__version__:<29}", style="dim white")

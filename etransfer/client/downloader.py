@@ -26,7 +26,7 @@ class ChunkDownloader:
         max_concurrent: int = 5,
         cache: Optional[LocalCache] = None,
         timeout: float = 30.0,
-    ):
+    ) -> None:
         """Initialize downloader.
 
         Args:

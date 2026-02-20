@@ -31,7 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import httpx
+import httpx  # noqa: E402
 
 PORT = 8767
 TOKEN_V1 = "test-token-v1"
@@ -145,7 +145,7 @@ class HotReloadTest:
                 self.server_process.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 self.server_process.kill()
-            print(f"\n  Server stopped")
+            print("\n  Server stopped")
 
     def _cleanup(self):
         self._stop_server()
@@ -180,7 +180,7 @@ class HotReloadTest:
             r = h.get("/api/storage")
             assert r.status_code == 200, f"Expected 200, got {r.status_code}"
             info = r.json()
-            ok(f"Auth with TOKEN_V1 works")
+            ok("Auth with TOKEN_V1 works")
 
             assert info["max"] == 50 * 1024 * 1024, f"Unexpected max: {info['max']}"
             ok(f"Storage quota: {info['max_formatted']}")
@@ -300,7 +300,7 @@ class HotReloadTest:
             assert r.status_code == 200
             data = r.json()
             assert "max_storage_size" in data["changes"]
-            ok(f"Quota change detected")
+            ok("Quota change detected")
 
             # Verify new quota
             r = h.get("/api/storage")
@@ -434,7 +434,7 @@ class HotReloadTest:
 
         # Port 9999 should NOT respond
         try:
-            r = httpx.get(f"http://127.0.0.1:9999/api/health", timeout=2)
+            r = httpx.get("http://127.0.0.1:9999/api/health", timeout=2)
             fail("Port 9999 should not be listening!")
             assert False
         except (httpx.ConnectError, httpx.ConnectTimeout):

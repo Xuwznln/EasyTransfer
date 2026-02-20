@@ -17,7 +17,7 @@ def create_auth_router(valid_tokens: list[str]) -> APIRouter:
     router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
     @router.post("/verify", response_model=AuthVerifyResponse)
-    async def verify_token(request: AuthVerifyRequest):
+    async def verify_token(request: AuthVerifyRequest) -> AuthVerifyResponse:
         """Verify an API token.
 
         Returns whether the token is valid and when it expires (if applicable).

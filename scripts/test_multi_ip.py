@@ -313,7 +313,7 @@ def test_traffic_monitoring():
 
         console.print(table)
 
-        console.print(f"\n[bold]Total:[/bold]")
+        console.print("\n[bold]Total:[/bold]")
         console.print(f"  Upload: {traffic['total']['upload_rate_formatted']}")
         console.print(f"  Download: {traffic['total']['download_rate_formatted']}")
 

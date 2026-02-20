@@ -1,7 +1,7 @@
 """Abstract interface for state storage backends."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Optional
 
 
 class StateBackend(ABC):

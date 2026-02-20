@@ -2,13 +2,13 @@
 
 import json
 import secrets
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from etransfer.server.auth.db import UserDB
-from etransfer.server.auth.models import GroupCreate, GroupPublic, GroupTable, Role, RoleQuota, UserPublic
+from etransfer.server.auth.models import GroupCreate, GroupPublic, GroupTable, Role, RoleQuota, UserPublic, UserTable
 from etransfer.server.auth.oauth import OIDCProvider
 
 
@@ -16,7 +16,7 @@ def _group_to_public(g: GroupTable, member_count: int = 0) -> GroupPublic:
     """Convert GroupTable (with quota_json string) to GroupPublic."""
     quota_data = json.loads(g.quota_json) if g.quota_json else {}
     return GroupPublic(
-        id=g.id,
+        id=g.id,  # type: ignore[arg-type]
         name=g.name,
         description=g.description,
         quota=RoleQuota(**quota_data),
@@ -108,11 +108,11 @@ def create_user_router(
 
             parsed = urlparse(oidc.callback_url)
             host = parsed.hostname or ""
-            if host not in ("", "localhost", "127.0.0.1", "0.0.0.0"):
+            if host not in ("", "localhost", "127.0.0.1", "0.0.0.0"):  # nosec B104
                 return oidc.callback_url
         return _derive_callback_url(request)
 
-    async def _get_current_user(request: Request):
+    async def _get_current_user(request: Request) -> Optional[UserTable]:
         """Extract current user from session token.
 
         Accepts: Authorization: Bearer <token> or X-Session-Token header.
@@ -135,13 +135,13 @@ def create_user_router(
             return None
         return user
 
-    async def _require_user(request: Request):
+    async def _require_user(request: Request) -> UserTable:
         user = await _get_current_user(request)
         if not user:
             raise HTTPException(401, "Authentication required. " "GET /api/users/login-info for login instructions.")
         return user
 
-    async def _require_admin(request: Request):
+    async def _require_admin(request: Request) -> UserTable:
         user = await _require_user(request)
         if user.role != Role.ADMIN and not user.is_admin:
             raise HTTPException(403, "Admin access required")
@@ -150,7 +150,7 @@ def create_user_router(
     # ── Login info (server-driven config for clients) ──────────
 
     @router.get("/api/users/login-info")
-    async def login_info():
+    async def login_info() -> dict[str, Any]:
         """Return login configuration for clients.
 
         Clients call this to discover how to authenticate.
@@ -164,7 +164,7 @@ def create_user_router(
     # ── CLI login flow ─────────────────────────────────────────
 
     @router.post("/api/users/login/start")
-    async def login_start(request: Request):
+    async def login_start(request: Request) -> dict[str, Any]:
         """Start a CLI login flow.
 
         Returns a unique state and the authorize URL.
@@ -194,7 +194,7 @@ def create_user_router(
         }
 
     @router.get("/api/users/login/poll/{state}")
-    async def login_poll(state: str):
+    async def login_poll(state: str) -> dict[str, Any]:
         """Poll for CLI login completion.
 
         Returns completed=true and token once the OAuth callback fires.
@@ -219,7 +219,7 @@ def create_user_router(
     # ── OAuth redirect login (browser) ─────────────────────────
 
     @router.get("/api/users/login")
-    async def login_redirect(request: Request):
+    async def login_redirect(request: Request) -> RedirectResponse:
         """Redirect browser to OIDC provider login page."""
         if not oidc:
             raise HTTPException(501, "OIDC authentication not configured")
@@ -236,7 +236,7 @@ def create_user_router(
         request: Request,
         code: str,
         state: Optional[str] = None,
-    ):
+    ) -> HTMLResponse:
         """Handle OIDC callback.
 
         Exchanges code for token, fetches user profile + groups,
@@ -309,7 +309,7 @@ def create_user_router(
         )
 
         # Create session
-        session = await user_db.create_session(user.id)
+        session = await user_db.create_session(user.id)  # type: ignore[arg-type]
 
         # If this is a CLI-initiated login, complete the pending login.
         # Re-fetch pending (may have been fetched above for redirect_uri,
@@ -330,7 +330,7 @@ def create_user_router(
     # ── Session / profile ──────────────────────────────────────
 
     @router.get("/api/users/me")
-    async def get_me(request: Request):
+    async def get_me(request: Request) -> UserPublic:
         """Get current user's profile and effective quota."""
         user = await _require_user(request)
         _rq = getattr(request.app.state, "parsed_role_quotas", role_quotas)
@@ -340,7 +340,7 @@ def create_user_router(
         return pub
 
     @router.post("/api/users/logout")
-    async def logout(request: Request):
+    async def logout(request: Request) -> dict[str, Any]:
         """Invalidate current session."""
         token = _extract_token(request)
         if token:
@@ -350,7 +350,7 @@ def create_user_router(
     # ── Admin: user management ─────────────────────────────────
 
     @router.get("/api/users")
-    async def list_users(request: Request):
+    async def list_users(request: Request) -> dict[str, Any]:
         """List all users (admin only)."""
         await _require_admin(request)
         users = await user_db.list_users()
@@ -360,7 +360,7 @@ def create_user_router(
         return {"users": pub_list}
 
     @router.put("/api/users/{user_id}/role")
-    async def set_role(user_id: int, role: str, request: Request):
+    async def set_role(user_id: int, role: str, request: Request) -> dict[str, Any]:
         """Set a user's role (admin only)."""
         await _require_admin(request)
         if role not in [r.value for r in Role]:
@@ -371,7 +371,7 @@ def create_user_router(
         return {"message": f"Role set to {role}", "user_id": user_id}
 
     @router.put("/api/users/{user_id}/active")
-    async def set_active(user_id: int, active: bool, request: Request):
+    async def set_active(user_id: int, active: bool, request: Request) -> dict[str, Any]:
         """Enable/disable a user (admin only)."""
         await _require_admin(request)
         user = await user_db.set_user_active(user_id, active)
@@ -387,18 +387,18 @@ def create_user_router(
     # ── Admin: group management ────────────────────────────────
 
     @router.get("/api/groups")
-    async def list_groups(request: Request):
+    async def list_groups(request: Request) -> dict[str, Any]:
         """List all groups and their quotas."""
         await _require_user(request)
         groups = await user_db.list_groups()
         result = []
         for g in groups:
-            count = await user_db.get_group_member_count(g.id)
+            count = await user_db.get_group_member_count(g.id)  # type: ignore[arg-type]
             result.append(_group_to_public(g, count))
         return {"groups": [g.model_dump() for g in result]}
 
     @router.post("/api/groups")
-    async def create_group(body: GroupCreate, request: Request):
+    async def create_group(body: GroupCreate, request: Request) -> dict[str, Any]:
         """Create a group with quota config (admin only).
 
         Groups are normally synced from the OIDC provider on login.
@@ -418,11 +418,11 @@ def create_user_router(
             default_retention_ttl=body.default_retention_ttl,
         )
         group = await user_db.ensure_group(body.name, body.description)
-        group = await user_db.update_group_quota(group.id, quota)
+        group = await user_db.update_group_quota(group.id, quota)  # type: ignore[assignment, arg-type]
         return {"message": "Group created", "group": _group_to_public(group).model_dump()}
 
     @router.put("/api/groups/{group_id}/quota")
-    async def update_group_quota(group_id: int, body: GroupCreate, request: Request):
+    async def update_group_quota(group_id: int, body: GroupCreate, request: Request) -> dict[str, Any]:
         """Update a group's quota (admin only)."""
         await _require_admin(request)
         quota = RoleQuota(
@@ -439,14 +439,14 @@ def create_user_router(
         return {"message": "Quota updated", "group": _group_to_public(group).model_dump()}
 
     @router.delete("/api/groups/{group_id}")
-    async def delete_group(group_id: int, request: Request):
+    async def delete_group(group_id: int, request: Request) -> dict[str, Any]:
         """Delete a group (admin only)."""
         await _require_admin(request)
         await user_db.delete_group(group_id)
         return {"message": "Group deleted"}
 
     @router.post("/api/groups/{group_id}/members/{user_id}")
-    async def add_member(group_id: int, user_id: int, request: Request):
+    async def add_member(group_id: int, user_id: int, request: Request) -> dict[str, Any]:
         """Add a user to a group (admin only)."""
         await _require_admin(request)
         group = await user_db.get_group(group_id)
@@ -459,7 +459,7 @@ def create_user_router(
         return {"message": f"User {user.username} added to group {group.name}"}
 
     @router.delete("/api/groups/{group_id}/members/{user_id}")
-    async def remove_member(group_id: int, user_id: int, request: Request):
+    async def remove_member(group_id: int, user_id: int, request: Request) -> dict[str, Any]:
         """Remove a user from a group (admin only)."""
         await _require_admin(request)
         await user_db.remove_user_from_group(user_id, group_id)
@@ -468,7 +468,7 @@ def create_user_router(
     # ── Quota check endpoint ───────────────────────────────────
 
     @router.get("/api/users/me/quota")
-    async def get_my_quota(request: Request):
+    async def get_my_quota(request: Request) -> dict[str, Any]:
         """Get current user's effective quota and usage."""
         user = await _require_user(request)
         _rq = getattr(request.app.state, "parsed_role_quotas", role_quotas)
@@ -487,12 +487,12 @@ def create_user_router(
 
     # ── Internal helpers ───────────────────────────────────────
 
-    async def _user_to_public(user, groups: Optional[list[str]] = None) -> UserPublic:
+    async def _user_to_public(user: UserTable, groups: Optional[list[str]] = None) -> UserPublic:
         if groups is None:
-            groups = await user_db.get_user_group_names(user.id)
+            groups = await user_db.get_user_group_names(user.id)  # type: ignore[arg-type]
         role_val = user.role.value if hasattr(user.role, "value") else user.role
         return UserPublic(
-            id=user.id,
+            id=user.id,  # type: ignore[arg-type]
             username=user.username,
             display_name=user.display_name,
             email=user.email,

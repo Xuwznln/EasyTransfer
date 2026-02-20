@@ -1,6 +1,6 @@
 """Authentication middleware for FastAPI."""
 
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -19,11 +19,11 @@ class TokenAuthMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: Any,
         valid_tokens: list[str],
         exclude_paths: Optional[list[str]] = None,
-        user_db=None,
-    ):
+        user_db: Any = None,
+    ) -> None:
         """Initialize auth middleware.
 
         Args:
@@ -57,7 +57,7 @@ class TokenAuthMiddleware(BaseHTTPMiddleware):
         """
         return self.valid_tokens
 
-    async def dispatch(self, request: Request, call_next: Callable):
+    async def dispatch(self, request: Request, call_next: Callable) -> JSONResponse:  # type: ignore[override]
         """Process request and validate token."""
         path = request.url.path
 

@@ -62,7 +62,7 @@ class TrafficMonitor:
         self,
         interfaces: Optional[list[str]] = None,
         interval: float = TRAFFIC_MONITOR_INTERVAL,
-    ):
+    ) -> None:
         """Initialize traffic monitor.
 
         Args:

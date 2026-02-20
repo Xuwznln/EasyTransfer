@@ -10,17 +10,13 @@
     python tests/test_config.py
 """
 
-import os
 import sys
-import tempfile
 import textwrap
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import yaml
-
-from etransfer.server.config import (
+from etransfer.server.config import (  # noqa: E402
     HOT_RELOADABLE_FIELDS,
     ServerSettings,
     _apply_env_overrides,

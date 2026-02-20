@@ -1,8 +1,8 @@
 """File management API routes."""
 
-from typing import Optional
+from typing import Any, AsyncIterator
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from etransfer.common.models import DownloadInfo, ErrorResponse, FileInfo, FileListResponse, FileStatus
@@ -29,7 +29,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(20, ge=1, le=100, description="Page size"),
         include_partial: bool = Query(True, description="Include partial uploads"),
-    ):
+    ) -> FileListResponse:
         """List available files.
 
         Returns files that are either complete or in-progress (partial).
@@ -49,7 +49,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
 
             for f in files_data:
                 all_files.append(
-                    FileInfo(
+                    FileInfo(  # type: ignore[call-arg]
                         file_id=f["file_id"],
                         filename=f["filename"],
                         size=f["size"],
@@ -105,7 +105,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
         response_model=FileInfo,
         responses={404: {"model": ErrorResponse}},
     )
-    async def get_file_info(file_id: str):
+    async def get_file_info(file_id: str) -> FileInfo:
         """Get information about a specific file."""
         info = await storage.get_file_info(file_id)
         if not info:
@@ -124,7 +124,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
             "download_count": info.get("download_count", 0),
         }
 
-        return FileInfo(
+        return FileInfo(  # type: ignore[call-arg]
             file_id=info["file_id"],
             filename=info["filename"],
             size=info["size"],
@@ -147,7 +147,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
             416: {"model": ErrorResponse},
         },
     )
-    async def download_file(file_id: str, request: Request, background_tasks: BackgroundTasks):
+    async def download_file(file_id: str, request: Request, background_tasks: BackgroundTasks) -> StreamingResponse:
         """Download a file with HTTP Range support.
 
         Supports partial content requests for resumable downloads.
@@ -198,7 +198,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
         # Check if this is a full download (determines download_once trigger)
         is_full_download = start == 0 and end == available_size - 1
 
-        async def generate_chunks():
+        async def generate_chunks() -> AsyncIterator[bytes]:
             """Generate file chunks for streaming."""
             offset = start
             remaining = content_length
@@ -235,7 +235,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
         # Record download and schedule deletion if download_once
         if is_full_download:
 
-            async def _after_download():
+            async def _after_download() -> None:
                 result = await storage.record_download(file_id)
                 if result["should_delete"]:
                     await storage.delete_upload(file_id)
@@ -264,7 +264,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
         response_model=DownloadInfo,
         responses={404: {"model": ErrorResponse}},
     )
-    async def get_download_info(file_id: str):
+    async def get_download_info(file_id: str) -> DownloadInfo:
         """Get download information for a file.
 
         Returns metadata needed to plan a chunked download.
@@ -289,7 +289,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
         "/{file_id}",
         responses={404: {"model": ErrorResponse}},
     )
-    async def delete_file(file_id: str):
+    async def delete_file(file_id: str) -> dict[str, Any]:
         """Delete a file.
 
         Removes both the file data and metadata.
@@ -306,7 +306,7 @@ def create_files_router(storage: TusStorage) -> APIRouter:
         "/cleanup",
         responses={200: {"description": "Cleanup result"}},
     )
-    async def trigger_cleanup():
+    async def trigger_cleanup() -> dict[str, Any]:
         """Manually trigger cleanup of expired uploads and TTL-expired files.
 
         This is useful for testing - normally cleanup runs periodically.

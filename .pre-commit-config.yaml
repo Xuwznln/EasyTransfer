@@ -24,7 +24,7 @@ repos:
       - id: flake8
         args:
           - "--max-line-length=200"
-          - "--extend-ignore=E203,W503,F401,E402,E721,F841,W293,F541,F824"
+          - "--extend-ignore=E203,W503,W291,W293,W391,F401"
           - "--exclude=build,dist,__pycache__,.mypy_cache,.pytest_cache,htmlcov,.vscode"
 
   # ── Type checking ─────────────────────────────────────────────

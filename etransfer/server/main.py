@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
@@ -27,7 +27,7 @@ _user_db = None  # Optional[UserDB]
 _oidc_provider = None  # Optional[OIDCProvider]
 
 
-def _create_user_db(settings: ServerSettings):
+def _create_user_db(settings: ServerSettings) -> Any:
     """Create UserDB with the appropriate SQLAlchemy async URL."""
     from etransfer.server.auth.db import UserDB, build_database_url
 
@@ -75,7 +75,7 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
     Returns:
         Configured FastAPI application
     """
-    global _storage, _traffic_monitor, _ip_manager, _oidc_provider
+    global _storage, _traffic_monitor, _ip_manager, _oidc_provider  # noqa: F824
 
     if settings is None:
         settings = load_server_settings()
@@ -123,11 +123,11 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
         class UserDBLazy:
             """Lazy proxy that resolves to _user_db at call time."""
 
-            async def get_session(self, token):
-                return await _user_db.get_session(token) if _user_db else None
+            async def get_session(self, token: str) -> Any:
+                return await _user_db.get_session(token) if _user_db else None  # type: ignore[attr-defined]
 
-            async def get_user(self, user_id):
-                return await _user_db.get_user(user_id) if _user_db else None
+            async def get_user(self, user_id: int) -> Any:
+                return await _user_db.get_user(user_id) if _user_db else None  # type: ignore[attr-defined]
 
         app.add_middleware(
             TokenAuthMiddleware,
@@ -136,7 +136,7 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
         )
 
     @app.on_event("startup")
-    async def startup_event():
+    async def startup_event() -> None:
         """Initialize services on startup."""
         global _storage, _traffic_monitor, _ip_manager, _user_db
 
@@ -193,9 +193,9 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
             print(f"[Server] Config watch enabled " f"(interval: {settings.config_watch_interval}s)")
 
     @app.on_event("shutdown")
-    async def shutdown_event():
+    async def shutdown_event() -> None:
         """Cleanup on shutdown."""
-        global _traffic_monitor, _user_db
+        global _traffic_monitor, _user_db  # noqa: F824
         if _traffic_monitor:
             _traffic_monitor.stop()
         if _user_db:
@@ -206,19 +206,19 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
     # ── Proxies (resolve globals lazily after startup) ─────────
 
     class StorageProxy:
-        def __getattr__(self, name):
+        def __getattr__(self, name: str) -> Any:
             if _storage is None:
                 raise RuntimeError("Storage not initialized")
             return getattr(_storage, name)
 
     class TrafficProxy:
-        def __getattr__(self, name):
+        def __getattr__(self, name: str) -> Any:
             if _traffic_monitor is None:
                 raise RuntimeError("Traffic monitor not initialized")
             return getattr(_traffic_monitor, name)
 
     class IPProxy:
-        def __getattr__(self, name):
+        def __getattr__(self, name: str) -> Any:
             if _ip_manager is None:
                 raise RuntimeError("IP manager not initialized")
             return getattr(_ip_manager, name)
@@ -228,18 +228,18 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
     # ── Register routes ────────────────────────────────────────
 
     # TUS handler — reads retention config from app.state.settings
-    tus_handler = TusHandler(storage_proxy, settings.max_upload_size)
+    tus_handler = TusHandler(storage_proxy, settings.max_upload_size)  # type: ignore[arg-type]
     app.include_router(tus_handler.get_router())
 
     # File management
-    app.include_router(create_files_router(storage_proxy))
+    app.include_router(create_files_router(storage_proxy))  # type: ignore[arg-type]
 
     # Server info — reads advertised_endpoints from app.state.settings
     app.include_router(
         create_info_router(
-            storage_proxy,
-            TrafficProxy(),
-            IPProxy(),
+            storage_proxy,  # type: ignore[arg-type]
+            TrafficProxy(),  # type: ignore[arg-type]
+            IPProxy(),  # type: ignore[arg-type]
             max_upload_size=settings.max_upload_size,
             server_port=settings.port,
         )
@@ -255,7 +255,7 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
         from etransfer.server.auth.routes import create_user_router
 
         class UserDBProxy:
-            def __getattr__(self, name):
+            def __getattr__(self, name: str) -> Any:
                 if _user_db is None:
                     raise RuntimeError("UserDB not initialized")
                 return getattr(_user_db, name)
@@ -279,12 +279,14 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
                 scope=settings.oidc_scope,
             )
 
-        app.include_router(create_user_router(UserDBProxy(), _oidc_provider, parsed_role_quotas))
+        app.include_router(
+            create_user_router(UserDBProxy(), _oidc_provider, parsed_role_quotas)  # type: ignore[arg-type]
+        )
 
     # ── Admin: config reload endpoint ──────────────────────────
 
     @app.post("/api/admin/reload-config")
-    async def reload_config(request: Request):
+    async def reload_config(request: Request) -> dict[str, Any]:
         """Reload hot-reloadable config fields from the config file.
 
         Requires admin authentication (API token or OIDC admin role).
@@ -304,7 +306,7 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
         else:
             change_summary = {}
 
-        return {
+        return {  # type: ignore[no-any-return]
             "reloaded": bool(changes),
             "changes": change_summary,
             "hot_reloadable": sorted(HOT_RELOADABLE_FIELDS),
@@ -330,13 +332,13 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
         }
 
     @app.get("/api/admin/config-status")
-    async def config_status(request: Request):
+    async def config_status(request: Request) -> dict[str, Any]:
         """Show which config file is loaded and watch status."""
         _require_admin_access(request)
 
         config_path = getattr(settings, "_config_path", None)
         return {
-            "config_file": str(config_path.resolve()) if config_path else None,
+            "config_file": str(config_path.resolve()) if config_path else None,  # type: ignore[assignment]  # type: ignore[assignment]
             "config_watch": settings.config_watch,
             "config_watch_interval": settings.config_watch_interval,
         }
@@ -350,11 +352,11 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
 def _get_config_mtime(settings: ServerSettings) -> Optional[float]:
     config_path = getattr(settings, "_config_path", None)
     if config_path and config_path.exists():
-        return config_path.stat().st_mtime
+        return config_path.stat().st_mtime  # type: ignore[no-any-return]
     return None
 
 
-def _safe_repr(value) -> str:
+def _safe_repr(value: Any) -> str:
     """Produce a safe string repr for change diffs (truncate long values)."""
     s = repr(value)
     return s[:200] + "..." if len(s) > 200 else s
@@ -381,7 +383,7 @@ def _require_admin_access(request: Request) -> None:
 
 async def cleanup_loop(interval: int) -> None:
     """Background task to cleanup expired uploads."""
-    global _storage
+    global _storage  # noqa: F824
 
     while True:
         try:
@@ -422,7 +424,7 @@ async def config_watch_loop(app: FastAPI) -> None:
 
 
 def run_server(
-    host: str = "0.0.0.0",
+    host: str = "0.0.0.0",  # nosec B104
     port: int = 8765,
     workers: int = 1,
     config_path: Optional[Path] = None,
@@ -453,7 +455,7 @@ def run_server(
     if storage_path:
         settings.storage_path = storage_path
     if state_backend:
-        settings.state_backend = state_backend
+        settings.state_backend = state_backend  # type: ignore[assignment]
     if redis_url:
         settings.redis_url = redis_url
 

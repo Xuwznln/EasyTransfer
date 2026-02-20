@@ -531,7 +531,7 @@ def main():
 
     storage_path = tempfile.mkdtemp(prefix="et_usersys_")
     db_path = str(Path(storage_path) / "users.db")
-    print(f"Starting server with OIDC user system...")
+    print("Starting server with OIDC user system...")
     print(f"  Storage: {storage_path}")
 
     proc = start_server(storage_path)
@@ -568,7 +568,7 @@ def main():
         admin_user, admin_token = asyncio.run(create_test_user(db_path, "oidc-admin-001", "admin-user", role="admin"))
         normal_user, user_token = asyncio.run(create_test_user(db_path, "oidc-user-001", "normal-user", role="user"))
         guest_user, guest_token = asyncio.run(create_test_user(db_path, "oidc-guest-001", "guest-user", role="guest"))
-        print(f"\n  Created test users:")
+        print("\n  Created test users:")
         print(f"    admin: {admin_user.username} (token: {admin_token[:16]}...)")
         print(f"    user:  {normal_user.username} (token: {user_token[:16]}...)")
         print(f"    guest: {guest_user.username} (token: {guest_token[:16]}...)")

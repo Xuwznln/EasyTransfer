@@ -31,7 +31,7 @@ class IPManager:
         self,
         interfaces: Optional[list[str]] = None,
         prefer_ipv4: bool = True,
-    ):
+    ) -> None:
         """Initialize IP manager.
 
         Args:

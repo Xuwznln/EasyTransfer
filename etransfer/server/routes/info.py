@@ -1,10 +1,10 @@
 """Server information API routes."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Request
 
-from etransfer.common.constants import DEFAULT_CHUNK_SIZE, DEFAULT_SERVER_PORT, TUS_EXTENSIONS, TUS_VERSION
+from etransfer.common.constants import DEFAULT_SERVER_PORT, TUS_EXTENSIONS, TUS_VERSION
 from etransfer.common.models import NetworkInterface, ServerInfo
 from etransfer.server.services.ip_mgr import IPManager
 from etransfer.server.services.traffic import TrafficMonitor
@@ -37,7 +37,7 @@ def create_info_router(
     _port = server_port
 
     @router.get("/info", response_model=ServerInfo)
-    async def get_server_info():
+    async def get_server_info() -> ServerInfo:
         """Get server information.
 
         Returns server capabilities, network interfaces, and storage stats.
@@ -83,12 +83,12 @@ def create_info_router(
         )
 
     @router.get("/health")
-    async def health_check():
+    async def health_check() -> dict[str, Any]:
         """Health check endpoint."""
         return {"status": "healthy"}
 
     @router.get("/stats")
-    async def get_stats():
+    async def get_stats() -> dict[str, Any]:
         """Get detailed server statistics."""
         # Get traffic stats
         traffic_stats = traffic_monitor.get_all_traffic()
@@ -108,7 +108,7 @@ def create_info_router(
         }
 
     @router.get("/endpoints")
-    async def get_endpoints(request: Request):
+    async def get_endpoints(request: Request) -> dict[str, Any]:
         """Get available endpoints with traffic load status.
 
         Returns all available IP addresses and their current traffic load,
@@ -218,7 +218,7 @@ def create_info_router(
         }
 
     @router.get("/storage")
-    async def get_storage_status():
+    async def get_storage_status() -> dict[str, Any]:
         """Get storage quota and usage information.
 
         Returns current disk usage, quota limits, and whether
@@ -226,14 +226,15 @@ def create_info_router(
         """
         usage = await storage.get_storage_usage()
 
-        def fmt(n):
+        def fmt(n: Optional[int]) -> str:
             if n is None:
                 return "unlimited"
+            val: float = float(n)
             for u in ("B", "KB", "MB", "GB", "TB"):
-                if abs(n) < 1024:
-                    return f"{n:.1f} {u}"
-                n /= 1024
-            return f"{n:.1f} PB"
+                if abs(val) < 1024:
+                    return f"{val:.1f} {u}"
+                val /= 1024
+            return f"{val:.1f} PB"
 
         return {
             "used": usage["used"],
@@ -250,7 +251,7 @@ def create_info_router(
         }
 
     @router.get("/traffic")
-    async def get_traffic():
+    async def get_traffic() -> dict[str, Any]:
         """Get real-time traffic information for all interfaces.
 
         Returns current upload/download rates and load percentages

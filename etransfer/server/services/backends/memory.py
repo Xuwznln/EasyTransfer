@@ -3,7 +3,7 @@
 import asyncio
 import fnmatch
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from etransfer.server.services.backends.interface import StateBackend
@@ -43,7 +43,7 @@ class MemoryStateBackend(StateBackend):
         value = await backend.get("key")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize memory backend."""
         self._data: dict[str, MemoryEntry] = {}
         self._lock = asyncio.Lock()

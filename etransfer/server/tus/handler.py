@@ -3,19 +3,11 @@
 import hashlib
 import uuid
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from etransfer.common.constants import (
-    CONTENT_TYPE_OFFSET,
-    DEFAULT_CHUNK_SIZE,
-    TUS_EXTENSIONS,
-    TUS_VERSION,
-    UPLOAD_EXPIRATION_SECONDS,
-    TusHeaders,
-)
+from etransfer.common.constants import CONTENT_TYPE_OFFSET, TUS_VERSION, UPLOAD_EXPIRATION_SECONDS, TusHeaders
 from etransfer.server.tus.models import TusCapabilities, TusErrors, TusMetadata, TusUpload
 from etransfer.server.tus.storage import TusStorage
 
@@ -38,7 +30,7 @@ def create_tus_router(
         FastAPI router with TUS endpoints
     """
     router = APIRouter(tags=["TUS"])
-    capabilities = TusCapabilities(max_size=max_size)
+    capabilities = TusCapabilities(max_size=max_size)  # type: ignore[call-arg]
 
     def get_tus_headers() -> dict:
         """Get common TUS response headers."""
@@ -97,7 +89,7 @@ def create_tus_router(
             if metadata_header:
                 tus_metadata = TusMetadata.from_header(metadata_header)
             else:
-                tus_metadata = TusMetadata(filename=f"upload_{uuid.uuid4().hex[:8]}")
+                tus_metadata = TusMetadata(filename=f"upload_{uuid.uuid4().hex[:8]}")  # type: ignore[call-arg]
         except ValueError as e:
             raise HTTPException(400, f"Invalid Upload-Metadata: {e}")
 
@@ -136,7 +128,7 @@ def create_tus_router(
             retention = "permanent"
 
         # Create upload record
-        upload = TusUpload(
+        upload = TusUpload(  # type: ignore[call-arg]
             file_id=file_id,
             filename=tus_metadata.filename,
             size=upload_length,
@@ -275,9 +267,9 @@ def create_tus_router(
             if algo.lower() == "sha256":
                 actual = hashlib.sha256(chunk_data).hexdigest()
             elif algo.lower() == "sha1":
-                actual = hashlib.sha1(chunk_data).hexdigest()
+                actual = hashlib.sha1(chunk_data).hexdigest()  # nosec B324
             elif algo.lower() == "md5":
-                actual = hashlib.md5(chunk_data).hexdigest()
+                actual = hashlib.md5(chunk_data).hexdigest()  # nosec B324
             else:
                 raise HTTPException(400, f"Unsupported checksum algorithm: {algo}")
 
@@ -339,7 +331,7 @@ class TusHandler:
         self,
         storage: TusStorage,
         max_size: Optional[int] = None,
-    ):
+    ) -> None:
         self.storage = storage
         self.max_size = max_size
         self.router = create_tus_router(storage, max_size)

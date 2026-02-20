@@ -24,7 +24,6 @@ from sqlmodel import SQLModel, select
 from etransfer.server.auth.models import (
     GroupTable,
     PendingLoginTable,
-    Role,
     RoleQuota,
     SessionTable,
     UserGroupLink,
@@ -38,7 +37,7 @@ class UserDB:
     Construct with a SQLAlchemy async database URL.
     """
 
-    def __init__(self, database_url: str):
+    def __init__(self, database_url: str) -> None:
         self.database_url = database_url
         # SQLite needs check_same_thread=False
         connect_args = {}
@@ -127,9 +126,9 @@ class UserDB:
                 await session.refresh(user)
 
         if groups is not None:
-            await self.sync_user_groups(user.id, groups)
+            await self.sync_user_groups(user.id, groups)  # type: ignore[arg-type]
 
-        return await self.get_user(user.id)
+        return await self.get_user(user.id)  # type: ignore[return-value, arg-type]
 
     async def get_user(self, user_id: int) -> Optional[UserTable]:
         async with self._session() as session:
@@ -141,7 +140,9 @@ class UserDB:
 
     async def list_users(self) -> list[UserTable]:
         async with self._session() as session:
-            result = await session.execute(select(UserTable).order_by(UserTable.created_at.desc()))
+            result = await session.execute(
+                select(UserTable).order_by(UserTable.created_at.desc())  # type: ignore[attr-defined]
+            )
             return list(result.scalars().all())
 
     async def set_user_role(self, user_id: int, role: str) -> Optional[UserTable]:
@@ -268,18 +269,18 @@ class UserDB:
         for name in target_names - current_names:
             group = await self.get_group_by_name(name)
             if group:
-                await self.add_user_to_group(user_id, group.id)
+                await self.add_user_to_group(user_id, group.id)  # type: ignore[arg-type]
 
         for name in current_names - target_names:
             group = await self.get_group_by_name(name)
             if group:
-                await self.remove_user_from_group(user_id, group.id)
+                await self.remove_user_from_group(user_id, group.id)  # type: ignore[arg-type]
 
     async def get_user_groups(self, user_id: int) -> list[GroupTable]:
         async with self._session() as session:
             result = await session.execute(
                 select(GroupTable)
-                .join(UserGroupLink, GroupTable.id == UserGroupLink.group_id)
+                .join(UserGroupLink, GroupTable.id == UserGroupLink.group_id)  # type: ignore[arg-type]
                 .where(UserGroupLink.user_id == user_id)
             )
             return list(result.scalars().all())
@@ -344,7 +345,7 @@ class UserDB:
             if not sess:
                 return None
 
-            if sess.expires_at and sess.expires_at < datetime.utcnow():
+            if sess.expires_at and sess.expires_at < datetime.utcnow():  # type: ignore[operator]
                 await session.delete(sess)
                 await session.commit()
                 return None
@@ -368,7 +369,9 @@ class UserDB:
     async def cleanup_expired_sessions(self) -> int:
         now = datetime.utcnow()
         async with self._session() as session:
-            result = await session.execute(select(SessionTable).where(SessionTable.expires_at < now))
+            result = await session.execute(
+                select(SessionTable).where(SessionTable.expires_at < now)  # type: ignore[operator]
+            )
             rows = result.scalars().all()
             count = len(rows)
             for sess in rows:
@@ -426,8 +429,8 @@ class UserDB:
         Priority: group quota (most generous) > role quota > global default.
         None means unlimited, which always wins over any numeric limit.
         """
-        role_q = role_quotas.get(user.role, RoleQuota())
-        groups = await self.get_user_groups(user.id)
+        role_q = role_quotas.get(user.role, RoleQuota())  # type: ignore[call-arg]
+        groups = await self.get_user_groups(user.id)  # type: ignore[arg-type]
 
         if not groups:
             return role_q
@@ -440,7 +443,7 @@ class UserDB:
         def most_permissive(vals: list[Optional[int]]) -> Optional[int]:
             if any(v is None for v in vals):
                 return None
-            return max(vals)
+            return max(vals)  # type: ignore[type-var]
 
         return RoleQuota(
             max_storage_size=most_permissive([c.max_storage_size for c in candidates]),
@@ -462,7 +465,7 @@ def build_database_url(
     mysql_host: str = "127.0.0.1",
     mysql_port: int = 3306,
     mysql_user: str = "root",
-    mysql_password: str = "",
+    mysql_password: str = "",  # nosec B107
     mysql_database: str = "etransfer",
 ) -> str:
     """Build SQLAlchemy async database URL from config fields.

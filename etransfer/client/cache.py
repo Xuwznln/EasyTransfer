@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from etransfer.common.constants import CACHE_DIR_NAME, DEFAULT_CHUNK_SIZE
+from etransfer.common.constants import CACHE_DIR_NAME
 
 
 class LocalCache:
@@ -20,7 +20,7 @@ class LocalCache:
         self,
         cache_dir: Optional[Path] = None,
         max_size_mb: int = 1024,  # 1GB default
-    ):
+    ) -> None:
         """Initialize local cache.
 
         Args:
@@ -270,7 +270,7 @@ class LocalCache:
             try:
                 stat = path.stat()
                 chunks.append((path, stat.st_mtime, stat.st_size))
-            except Exception:
+            except Exception:  # nosec B112
                 continue
 
         # Sort by modification time (oldest first)
@@ -284,7 +284,7 @@ class LocalCache:
             try:
                 path.unlink()
                 current_size -= size
-            except Exception:
+            except Exception:  # nosec B112
                 continue
 
     def assemble_file(self, file_id: str, output_path: Path) -> bool:

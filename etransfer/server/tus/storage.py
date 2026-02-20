@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-import aiofiles
-import aiofiles.os
+import aiofiles  # type: ignore[import-untyped]
+import aiofiles.os  # type: ignore[import-untyped]
 
 from etransfer.common.constants import RedisKeys
 from etransfer.server.tus.models import TusUpload
@@ -36,7 +36,7 @@ class TusStorage:
         state_manager: "StateManager",
         chunk_size: int = 4 * 1024 * 1024,
         max_storage_size: Optional[int] = None,
-    ):
+    ) -> None:
         """Initialize TUS storage.
 
         Args:
@@ -115,7 +115,7 @@ class TusStorage:
 
         # Create empty file (no pre-allocation to respect storage quota)
         file_path = self.get_file_path(upload.file_id)
-        async with aiofiles.open(file_path, "wb") as f:
+        async with aiofiles.open(file_path, "wb") as _:
             pass  # Empty file; grows as chunks arrive
 
     async def get_upload(self, file_id: str) -> Optional[TusUpload]:
@@ -223,7 +223,7 @@ class TusStorage:
             # Use r+b if file exists and has content, else ab for appending
             # TUS writes sequentially, so offset == current file size
             mode = "r+b" if file_path.stat().st_size > 0 else "ab"
-            async with aiofiles.open(file_path, mode) as f:
+            async with aiofiles.open(file_path, mode) as f:  # type: ignore[call-overload]
                 if mode == "r+b":
                     await f.seek(offset)
                 await f.write(data)
@@ -261,7 +261,7 @@ class TusStorage:
 
         async with aiofiles.open(file_path, "rb") as f:
             await f.seek(offset)
-            return await f.read(length)
+            return await f.read(length)  # type: ignore[no-any-return]
 
     async def get_available_size(self, file_id: str) -> int:
         """Get the size of data available for download.
@@ -282,7 +282,7 @@ class TusStorage:
             file_data = await self.state.get(file_key)
             if file_data:
                 info = json.loads(file_data)
-                return info.get("size", 0)
+                return info.get("size", 0)  # type: ignore[no-any-return]
             return 0
 
         return upload.offset
@@ -411,7 +411,7 @@ class TusStorage:
         file_key = self._file_key(file_id)
         data = await self.state.get(file_key)
         if data:
-            return json.loads(data)
+            return json.loads(data)  # type: ignore[no-any-return]
 
         # Try upload record
         upload = await self.get_upload(file_id)
@@ -541,9 +541,13 @@ class TusStorage:
         }
 
         if self.max_storage_size:
-            available = max(0, self.max_storage_size - used)
+            available = max(0, self.max_storage_size - used)  # type: ignore[assignment]
             result["available"] = available
-            result["usage_percent"] = round((used / self.max_storage_size) * 100, 2) if self.max_storage_size > 0 else 0
+            result["usage_percent"] = (
+                round((used / self.max_storage_size) * 100, 2)  # type: ignore[assignment]
+                if self.max_storage_size > 0
+                else 0
+            )
             result["is_full"] = used >= self.max_storage_size
         else:
             result["available"] = None
@@ -567,4 +571,4 @@ class TusStorage:
 
         would_use = usage["used"] + additional_bytes
         allowed = would_use <= self.max_storage_size
-        return allowed, usage
+        return allowed, usage  # type: ignore[no-any-return]

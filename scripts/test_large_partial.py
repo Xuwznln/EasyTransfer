@@ -563,7 +563,7 @@ class LargeFileTest:
 
     def run(self):
         """Run the full test suite."""
-        banner(f"Large File Partial Upload/Download Test Suite")
+        banner("Large File Partial Upload/Download Test Suite")
         print(f"  Server: {self.server_url}")
         print(f"  File size: {fmt_size(self.file_size)}")
         print(f"  Chunk size: {fmt_size(self.chunk_size)}")

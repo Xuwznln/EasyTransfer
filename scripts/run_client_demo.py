@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from etransfer.common.constants import DEFAULT_SERVER_PORT
+from etransfer.common.constants import DEFAULT_SERVER_PORT  # noqa: E402
 
 
 def generate_test_file(path: Path, size_mb: int = 10) -> str:
@@ -38,7 +38,7 @@ def demo_upload(server_url: str, token: str, file_path: Path, retention: str = N
     """演示上传。"""
     from etransfer.client.tus_client import EasyTransferClient
 
-    print(f"\n=== 上传演示 ===")
+    print("\n=== 上传演示 ===")
     print(f"文件: {file_path}")
     print(f"服务器: {server_url}")
     if retention:
@@ -70,7 +70,7 @@ def demo_download(server_url: str, token: str, file_id: str, output_dir: Path):
     """演示下载。"""
     from etransfer.client.downloader import ChunkDownloader
 
-    print(f"\n=== 下载演示 ===")
+    print("\n=== 下载演示 ===")
     print(f"File ID: {file_id}")
     print(f"输出目录: {output_dir}")
 
@@ -96,7 +96,7 @@ def demo_download(server_url: str, token: str, file_id: str, output_dir: Path):
     if success:
         print(f"\n✓ 下载完成! 保存到: {output_path}")
     else:
-        print(f"\n✗ 下载失败")
+        print("\n✗ 下载失败")
 
     return success, output_path
 
@@ -105,7 +105,7 @@ def demo_list_files(server_url: str, token: str):
     """演示列出文件。"""
     from etransfer.client.tus_client import EasyTransferClient
 
-    print(f"\n=== 文件列表 ===")
+    print("\n=== 文件列表 ===")
 
     with EasyTransferClient(server_url, token=token) as client:
         files = client.list_files()
@@ -131,7 +131,7 @@ def demo_server_info(server_url: str, token: str):
     """演示获取服务器信息。"""
     from etransfer.client.tus_client import EasyTransferClient
 
-    print(f"\n=== 服务器信息 ===")
+    print("\n=== 服务器信息 ===")
 
     with EasyTransferClient(server_url, token=token) as client:
         info = client.get_server_info()
@@ -143,14 +143,14 @@ def demo_server_info(server_url: str, token: str):
     print(f"存储使用: {info.total_size / 1024 / 1024:.1f} MB")
 
     if info.interfaces:
-        print(f"网络接口:")
+        print("网络接口:")
         for iface in info.interfaces:
             print(f"  - {iface.name}: {iface.ip_address}")
 
     # 存储状态
     try:
         storage = client.get_storage_status()
-        print(f"\n存储状态:")
+        print("\n存储状态:")
         print(f"  已用: {storage.get('used_formatted', 'N/A')}")
         print(f"  限额: {storage.get('max_formatted', 'unlimited')}")
         print(f"  可用: {storage.get('available_formatted', 'unlimited')}")
@@ -313,9 +313,9 @@ def main():
                     # 验证哈希
                     downloaded_hash = hashlib.md5(output_path.read_bytes()).hexdigest()
                     if downloaded_hash == original_hash:
-                        print(f"\n✓ 哈希验证通过!")
+                        print("\n✓ 哈希验证通过!")
                     else:
-                        print(f"\n✗ 哈希不匹配!")
+                        print("\n✗ 哈希不匹配!")
                         print(f"  原始: {original_hash}")
                         print(f"  下载: {downloaded_hash}")
 

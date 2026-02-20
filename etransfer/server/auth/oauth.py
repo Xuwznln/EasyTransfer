@@ -26,7 +26,7 @@ class OIDCProvider:
         token_endpoint: Optional[str] = None,
         userinfo_endpoint: Optional[str] = None,
         end_session_endpoint: Optional[str] = None,
-    ):
+    ) -> None:
         self.issuer_url = issuer_url.rstrip("/")
         self.client_id = client_id
         self.client_secret = client_secret
@@ -130,7 +130,7 @@ class OIDCProvider:
             if "error" in data:
                 raise ValueError(f"OIDC token error: {data['error']} - " f"{data.get('error_description', '')}")
 
-            return data
+            return data  # type: ignore[no-any-return]
 
     async def get_user_info(self, access_token: str) -> dict:
         """Fetch user profile from OIDC userinfo endpoint.
@@ -147,7 +147,7 @@ class OIDCProvider:
                 },
             )
             resp.raise_for_status()
-            return resp.json()
+            return resp.json()  # type: ignore[no-any-return]
 
     def get_login_info(self) -> dict:
         """Return login configuration for clients."""

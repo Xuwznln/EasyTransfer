@@ -99,7 +99,7 @@ multi_line_output = 3
 
 [tool.flake8]
 max-line-length = 200
-extend-ignore = ["E203", "W503", "F401", "E402", "E721", "F841", "W293", "F541", "F824"]
+extend-ignore = ["E203", "W503", "W291", "W293", "W391", "F401"]
 exclude = ["build", "dist", "__pycache__", ".mypy_cache", ".pytest_cache", "htmlcov", ".vscode"]
 
 # ── Type checking ─────────────────────────────────────────────
@@ -108,13 +108,16 @@ exclude = ["build", "dist", "__pycache__", ".mypy_cache", ".pytest_cache", "html
 python_version = "3.9"
 warn_return_any = false
 warn_unused_configs = true
-disallow_untyped_defs = false
+disallow_untyped_defs = true
 no_implicit_optional = false
 warn_redundant_casts = true
 warn_unused_ignores = false
 strict_equality = true
 ignore_missing_imports = true
-disable_error_code = ["unused-ignore", "no-any-return", "return-value", "arg-type", "assignment", "union-attr", "call-arg", "type-var", "attr-defined", "call-overload", "var-annotated", "operator", "type-arg", "no-untyped-def"]
+
+[[tool.mypy.overrides]]
+module = "etransfer.client.gui"
+disable_error_code = ["arg-type", "call-overload", "list-item", "attr-defined"]
 
 # ── Testing ───────────────────────────────────────────────────
 
@@ -134,7 +137,7 @@ filterwarnings = [
 
 [tool.bandit]
 exclude_dirs = ["tests", "scripts", "build", "dist"]
-skips = ["B101", "B104", "B107", "B110", "B112", "B324", "B601"]
+skips = ["B101", "B110"]
 
 # ── Version management ────────────────────────────────────────
 

@@ -5,7 +5,6 @@
 测试各个模块的基本功能。
 """
 
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -31,7 +30,7 @@ def test_models():
     """测试数据模型。"""
     print("测试数据模型...")
 
-    from etransfer.common.models import FileInfo, FileStatus, NetworkInterface, ServerInfo
+    from etransfer.common.models import FileInfo, ServerInfo
 
     # 测试 FileInfo
     file_info = FileInfo(
@@ -71,7 +70,6 @@ def test_config():
         HOT_RELOADABLE_FIELDS,
         ServerSettings,
         _parse_yaml_to_settings_dict,
-        discover_config_path,
         load_server_settings,
         parse_size,
         reload_hot_settings,
@@ -253,8 +251,6 @@ def test_ip_manager():
 def test_traffic_monitor():
     """测试流量监控。"""
     print("测试流量监控...")
-
-    import time
 
     from etransfer.server.services.traffic import TrafficMonitor
 

@@ -1,10 +1,10 @@
 """Extended TUS client for EasyTransfer."""
 
-import os
 from pathlib import Path
 from typing import Any, Callable, Optional
 from urllib.parse import urljoin
 
+import httpx
 from tusclient.client import TusClient
 from tusclient.uploader import Uploader
 
@@ -27,8 +27,8 @@ class EasyTransferClient(TusClient):
         server_url: str,
         token: Optional[str] = None,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Initialize EasyTransfer client.
 
         Args:
@@ -53,7 +53,7 @@ class EasyTransferClient(TusClient):
         self.chunk_size = chunk_size
         self._http_client: Optional[Any] = None
 
-    def _get_http_client(self):
+    def _get_http_client(self) -> httpx.Client:
         """Get or create HTTP client for API calls."""
         if self._http_client is None:
             import httpx
@@ -69,16 +69,21 @@ class EasyTransferClient(TusClient):
             )
         return self._http_client
 
-    def close(self):
+    def close(self) -> None:
         """Close HTTP client."""
         if self._http_client:
             self._http_client.close()
             self._http_client = None
 
-    def __enter__(self):
+    def __enter__(self) -> "EasyTransferClient":
         return self
 
-    def __exit__(self, *args):
+    def __exit__(
+        self,
+        exc_type: Any,
+        exc_val: Any,
+        exc_tb: Any,
+    ) -> None:
         self.close()
 
     def get_server_info(self) -> ServerInfo:
@@ -153,9 +158,9 @@ class EasyTransferClient(TusClient):
             data = response.json()
 
             if for_upload and data.get("best_for_upload"):
-                return data["best_for_upload"]
+                return data["best_for_upload"]  # type: ignore[no-any-return]
             elif not for_upload and data.get("best_for_download"):
-                return data["best_for_download"]
+                return data["best_for_download"]  # type: ignore[no-any-return]
 
             # Fallback to manual selection
             endpoints = data.get("endpoints", [])
@@ -169,7 +174,7 @@ class EasyTransferClient(TusClient):
                 return self.server_url
 
             best = min(available, key=lambda x: x.get(key, 100))
-            return best.get("url", self.server_url)
+            return best.get("url", self.server_url)  # type: ignore[no-any-return]
 
         except Exception:
             return self.server_url
@@ -183,7 +188,7 @@ class EasyTransferClient(TusClient):
         client = self._get_http_client()
         response = client.get("/api/endpoints")
         response.raise_for_status()
-        return response.json()
+        return response.json()  # type: ignore[no-any-return]
 
     def get_traffic(self) -> dict:
         """Get real-time traffic information.
@@ -194,7 +199,7 @@ class EasyTransferClient(TusClient):
         client = self._get_http_client()
         response = client.get("/api/traffic")
         response.raise_for_status()
-        return response.json()
+        return response.json()  # type: ignore[no-any-return]
 
     def get_storage_status(self) -> dict:
         """Get server storage quota and usage information.
@@ -205,7 +210,7 @@ class EasyTransferClient(TusClient):
         client = self._get_http_client()
         response = client.get("/api/storage")
         response.raise_for_status()
-        return response.json()
+        return response.json()  # type: ignore[no-any-return]
 
     def test_endpoint_connectivity(
         self,
@@ -360,19 +365,19 @@ class EasyTransferClient(TusClient):
             # Primary sort: load, secondary: latency
             reachable.sort(key=lambda x: (x.get(load_key, 100), x.get("latency_ms", 999)))
 
-        return reachable[0]["url"]
+        return reachable[0]["url"]  # type: ignore[no-any-return]
 
     def create_uploader(
         self,
         file_path: str,
-        metadata: Optional[dict] = None,
+        metadata: Optional[dict[str, str]] = None,
         chunk_size: Optional[int] = None,
         retries: int = 3,
         retry_delay: float = 1.0,
         progress_callback: Optional[Callable[[int, int], None]] = None,
         retention: Optional[str] = None,
         retention_ttl: Optional[int] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> "EasyTransferUploader":
         """Create an uploader for a file.
 
@@ -392,13 +397,13 @@ class EasyTransferClient(TusClient):
         Returns:
             EasyTransferUploader instance
         """
-        file_path = Path(file_path)
-        if not file_path.exists():
+        file_path = Path(file_path)  # type: ignore[assignment]
+        if not file_path.exists():  # type: ignore[attr-defined]
             raise FileNotFoundError(f"File not found: {file_path}")
 
         # Build metadata
         upload_metadata = {
-            "filename": file_path.name,
+            "filename": file_path.name,  # type: ignore[attr-defined]
         }
 
         # Try to determine MIME type
@@ -420,7 +425,7 @@ class EasyTransferClient(TusClient):
         return EasyTransferUploader(
             client=self,
             file_path=str(file_path),
-            file_size=file_path.stat().st_size,
+            file_size=file_path.stat().st_size,  # type: ignore[attr-defined]
             metadata=upload_metadata,
             chunk_size=chunk_size or self.chunk_size,
             retries=retries,
@@ -444,13 +449,13 @@ class EasyTransferUploader(Uploader):
         client: EasyTransferClient,
         file_path: str,
         file_size: int,
-        metadata: dict,
+        metadata: dict[str, str],
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         retries: int = 3,
         retry_delay: float = 1.0,
         progress_callback: Optional[Callable[[int, int], None]] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Initialize uploader.
 
         Args:
@@ -491,7 +496,7 @@ class EasyTransferUploader(Uploader):
             return 100.0
         return (self._uploaded_bytes / self.file_size) * 100
 
-    def upload_chunk(self):
+    def upload_chunk(self) -> Any:
         """Upload a single chunk with progress tracking."""
         result = super().upload_chunk()
 
@@ -509,7 +514,7 @@ class EasyTransferUploader(Uploader):
         poll_interval: float = 5.0,
         max_wait: float = 3600.0,
         quota_callback: Optional[Callable[[dict], None]] = None,
-    ):
+    ) -> Optional[str]:
         """Upload the file with progress tracking and quota-aware retry.
 
         When the server's storage quota is full (HTTP 507), the uploader
@@ -589,7 +594,7 @@ class EasyTransferUploader(Uploader):
                 else:
                     raise
 
-        return self.url
+        return self.url  # type: ignore[no-any-return]
 
     def _get_storage_info(self) -> dict:
         """Query server storage status."""
@@ -607,7 +612,7 @@ class EasyTransferUploader(Uploader):
                 with httpx.Client(timeout=10.0) as c:
                     r = c.get(f"{base_url}/api/storage", headers=headers)
                     if r.status_code == 200:
-                        return r.json()
+                        return r.json()  # type: ignore[no-any-return]
         except Exception:
             pass
         return {}

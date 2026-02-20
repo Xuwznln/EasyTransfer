@@ -294,7 +294,7 @@ class RetentionTester:
         assert "x-retention-warning" in headers, "Expected warning header"
         dl1_md5 = md5_file(dl1)
         assert dl1_md5 == original_md5, "MD5 mismatch on first download"
-        print(f"  First download OK, MD5 matches")
+        print("  First download OK, MD5 matches")
         print(f"  Warning header: {headers.get('x-retention-warning')}")
 
         # Wait briefly for background deletion
@@ -400,7 +400,7 @@ class RetentionTester:
         """Test: token-level default retention policy is applied."""
         print("  Creating 512KB test file...")
         file_path = create_test_file(512 * 1024)
-        original_md5 = md5_file(file_path)
+        _ = md5_file(file_path)
 
         # Upload using the ephemeral-token (which has default_retention=download_once)
         from etransfer.client.tus_client import EasyTransferClient
@@ -433,7 +433,7 @@ class RetentionTester:
         status, headers = self.download_file(file_id, dl1)
         assert status == 200
         assert headers.get("x-retention-policy") == "download_once"
-        print(f"  Download OK, retention header confirms download_once")
+        print("  Download OK, retention header confirms download_once")
 
         time.sleep(1.0)
 

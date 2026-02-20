@@ -27,7 +27,7 @@ class ServerSettings(BaseSettings):
     """Server settings loaded from environment or config file."""
 
     # Server
-    host: str = Field("0.0.0.0", description="Server bind host")
+    host: str = Field("0.0.0.0", description="Server bind host")  # nosec B104
     port: int = Field(DEFAULT_SERVER_PORT, description="Server port")
     workers: int = Field(1, description="Number of uvicorn workers")
 
@@ -88,7 +88,7 @@ class ServerSettings(BaseSettings):
     )
 
     @classmethod
-    def parse_list_env(cls, key: str, default: list = None) -> list:
+    def parse_list_env(cls, key: str, default: list = None) -> list:  # type: ignore[assignment]
         """Parse list from environment variable (JSON format)."""
         import json
 

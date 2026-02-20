@@ -5,7 +5,7 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Callable, Optional
+from typing import Optional
 
 BOTH = "both"
 X = "x"
@@ -28,15 +28,13 @@ HORIZONTAL = "horizontal"
 SUNKEN = "sunken"
 END = "end"
 
-from etransfer.common.constants import DEFAULT_SERVER_PORT
-
 
 def format_size(size: int) -> str:
     """Format size in human-readable format."""
     for unit in ["B", "KB", "MB", "GB", "TB"]:
         if size < 1024:
             return f"{size:.1f} {unit}"
-        size /= 1024
+        size /= 1024  # type: ignore[assignment]
     return f"{size:.1f} PB"
 
 
@@ -48,7 +46,7 @@ def format_rate(rate: float) -> str:
 class EasyTransferGUI:
     """Main GUI application for EasyTransfer."""
 
-    def __init__(self, root):
+    def __init__(self, root: "tk.Tk") -> None:
         """Initialize GUI.
 
         Args:
@@ -67,7 +65,7 @@ class EasyTransferGUI:
         self.is_downloading = False
 
         # Message queue for thread communication
-        self.msg_queue = queue.Queue()
+        self.msg_queue: queue.Queue[tuple[str, object]] = queue.Queue()
 
         # Build UI
         self._create_menu()
@@ -76,7 +74,7 @@ class EasyTransferGUI:
         # Start message processing
         self._process_messages()
 
-    def _create_menu(self):
+    def _create_menu(self) -> None:
         """Create menu bar."""
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
@@ -94,7 +92,7 @@ class EasyTransferGUI:
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About", command=self._show_about)
 
-    def _create_main_frame(self):
+    def _create_main_frame(self) -> None:
         """Create main content frame."""
         # Main container
         main_frame = ttk.Frame(self.root, padding=10)
@@ -147,7 +145,7 @@ class EasyTransferGUI:
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=SUNKEN)
         status_bar.pack(fill=X, pady=(10, 0))
 
-    def _create_upload_tab(self, parent):
+    def _create_upload_tab(self, parent: ttk.Frame) -> None:
         """Create upload tab content."""
         # File selection
         file_frame = ttk.Frame(parent)
@@ -176,7 +174,7 @@ class EasyTransferGUI:
         self.upload_btn = ttk.Button(parent, text="Upload", command=self._start_upload, state=DISABLED)
         self.upload_btn.pack(pady=10)
 
-    def _create_download_tab(self, parent):
+    def _create_download_tab(self, parent: ttk.Frame) -> None:
         """Create download tab content."""
         # File ID input
         id_frame = ttk.Frame(parent)
@@ -214,7 +212,7 @@ class EasyTransferGUI:
         self.download_btn = ttk.Button(parent, text="Download", command=self._start_download)
         self.download_btn.pack(pady=10)
 
-    def _create_files_tab(self, parent):
+    def _create_files_tab(self, parent: ttk.Frame) -> None:
         """Create files list tab content."""
         # Treeview for files
         columns = ("filename", "size", "progress", "status")
@@ -246,7 +244,7 @@ class EasyTransferGUI:
         download_btn = ttk.Button(btn_frame, text="Download Selected", command=self._download_selected)
         download_btn.pack(side=LEFT, padx=5)
 
-    def _create_info_tab(self, parent):
+    def _create_info_tab(self, parent: ttk.Frame) -> None:
         """Create server info tab content."""
         # Info display
         self.info_text = tk.Text(parent, height=20, state=DISABLED)
@@ -255,7 +253,7 @@ class EasyTransferGUI:
         refresh_btn = ttk.Button(parent, text="Refresh", command=self._refresh_server_info)
         refresh_btn.pack(pady=10)
 
-    def _select_upload_file(self):
+    def _select_upload_file(self) -> None:
         """Open file dialog to select file for upload."""
         file_path = filedialog.askopenfilename(title="Select File to Upload")
         if file_path:
@@ -265,21 +263,21 @@ class EasyTransferGUI:
             file_size = self.current_file.stat().st_size
             self.upload_status_var.set(f"Ready to upload: {format_size(file_size)}")
 
-    def _select_download_dir(self):
+    def _select_download_dir(self) -> None:
         """Open directory dialog to select download location."""
         dir_path = filedialog.askdirectory(title="Select Download Directory")
         if dir_path:
             self.download_output_var.set(dir_path)
 
-    def _show_download_dialog(self):
+    def _show_download_dialog(self) -> None:
         """Switch to the download tab."""
         self.notebook.select(1)
 
-    def _connect_server(self):
+    def _connect_server(self) -> None:
         """Test connection to server."""
         self.status_var.set("Connecting...")
 
-        def connect():
+        def connect() -> None:
             try:
                 from etransfer.client.server_info import check_server_health
 
@@ -300,7 +298,7 @@ class EasyTransferGUI:
 
         threading.Thread(target=connect, daemon=True).start()
 
-    def _start_upload(self):
+    def _start_upload(self) -> None:
         """Start file upload in background thread."""
         if not self.current_file or self.is_uploading:
             return
@@ -309,13 +307,11 @@ class EasyTransferGUI:
         self.upload_btn.config(state=DISABLED)
         self.upload_progress_var.set(0)
 
-        def upload():
+        def upload() -> None:
             try:
                 from etransfer.client.tus_client import EasyTransferClient
 
-                file_size = self.current_file.stat().st_size
-
-                def progress_callback(uploaded: int, total: int):
+                def progress_callback(uploaded: int, total: int) -> None:
                     progress = (uploaded / total) * 100
                     self.msg_queue.put(("upload_progress", progress))
                     self.msg_queue.put(("upload_status", f"Uploading: {format_size(uploaded)} / {format_size(total)}"))
@@ -342,7 +338,7 @@ class EasyTransferGUI:
 
         threading.Thread(target=upload, daemon=True).start()
 
-    def _start_download(self):
+    def _start_download(self) -> None:
         """Start file download in background thread."""
         file_id = self.download_file_id_var.get().strip()
         if not file_id or self.is_downloading:
@@ -352,7 +348,7 @@ class EasyTransferGUI:
         self.download_btn.config(state=DISABLED)
         self.download_progress_var.set(0)
 
-        def download():
+        def download() -> None:
             try:
                 from etransfer.client.downloader import ChunkDownloader
 
@@ -366,7 +362,7 @@ class EasyTransferGUI:
                 output_dir = Path(self.download_output_var.get())
                 output_path = output_dir / info.filename
 
-                def progress_callback(downloaded: int, total: int):
+                def progress_callback(downloaded: int, total: int) -> None:
                     progress = (downloaded / total) * 100
                     self.msg_queue.put(("download_progress", progress))
                     self.msg_queue.put(
@@ -396,11 +392,11 @@ class EasyTransferGUI:
 
         threading.Thread(target=download, daemon=True).start()
 
-    def _refresh_files(self):
+    def _refresh_files(self) -> None:
         """Refresh file list from server."""
         self.status_var.set("Loading files...")
 
-        def load_files():
+        def load_files() -> None:
             try:
                 from etransfer.client.tus_client import EasyTransferClient
 
@@ -419,7 +415,7 @@ class EasyTransferGUI:
 
         threading.Thread(target=load_files, daemon=True).start()
 
-    def _download_selected(self):
+    def _download_selected(self) -> None:
         """Download selected file from list."""
         selection = self.files_tree.selection()
         if not selection:
@@ -434,11 +430,11 @@ class EasyTransferGUI:
             # Switch to download tab and start
             self._start_download()
 
-    def _refresh_server_info(self):
+    def _refresh_server_info(self) -> None:
         """Refresh server information."""
         self.status_var.set("Loading server info...")
 
-        def load_info():
+        def load_info() -> None:
             try:
                 from etransfer.client.tus_client import EasyTransferClient
 
@@ -457,14 +453,14 @@ class EasyTransferGUI:
 
         threading.Thread(target=load_info, daemon=True).start()
 
-    def _show_about(self):
+    def _show_about(self) -> None:
         """Show about dialog."""
         messagebox.showinfo(
             "About EasyTransfer",
             "EasyTransfer\nVersion 0.1.0\n\nA TUS-based file transfer tool",
         )
 
-    def _process_messages(self):
+    def _process_messages(self) -> None:
         """Process messages from background threads."""
         try:
             while True:
@@ -553,10 +549,10 @@ Network Interfaces:
         self.root.after(100, self._process_messages)
 
 
-def run_gui():
+def run_gui() -> None:
     """Run the GUI application."""
     root = tk.Tk()
-    app = EasyTransferGUI(root)
+    _ = EasyTransferGUI(root)
     root.mainloop()
 
 

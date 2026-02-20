@@ -144,7 +144,7 @@ class QuotaResumeTest:
         if self.server_process:
             self.server_process.terminate()
             self.server_process.wait(timeout=10)
-            print(f"  Server stopped")
+            print("  Server stopped")
 
         # Cleanup storage
         if hasattr(self, "_storage_dir") and os.path.exists(self._storage_dir):
@@ -219,7 +219,7 @@ class QuotaResumeTest:
         def cleanup_after_delay():
             """Simulate a downloader taking the file after some time."""
             time.sleep(8)  # Wait 8 seconds then free space
-            print(f"\n    [Cleanup] Deleting first file to free space...")
+            print("\n    [Cleanup] Deleting first file to free space...")
             with get_http(self.server_url, self.token) as http:
                 r = http.delete(f"/api/files/{file1_id}")
                 print(f"    [Cleanup] Delete response: {r.status_code}")
@@ -234,7 +234,7 @@ class QuotaResumeTest:
 
         # Start upload - will hit quota partway through, then resume
         print(f"  Starting upload of {fmt_size(self.file2_size)}...")
-        print(f"  Expected: will fill quota ~5MB in, then wait for cleanup...")
+        print("  Expected: will fill quota ~5MB in, then wait for cleanup...")
 
         client = EasyTransferClient(self.server_url, token=self.token)
         uploader = client.create_uploader(test_file2, chunk_size=self.chunk_size)

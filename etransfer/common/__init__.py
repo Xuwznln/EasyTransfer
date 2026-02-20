@@ -13,7 +13,7 @@ __all__ = [
 # Lazy imports to avoid circular dependencies
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> object:
     if name in ("TUS_VERSION", "DEFAULT_CHUNK_SIZE", "TUS_EXTENSIONS"):
         from etransfer.common.constants import DEFAULT_CHUNK_SIZE, TUS_EXTENSIONS, TUS_VERSION
 
