@@ -16,8 +16,9 @@ import json
 import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
+from sqlalchemy import Result
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlmodel import SQLModel, select
 
@@ -140,7 +141,7 @@ class UserDB:
 
     async def list_users(self) -> list[UserTable]:
         async with self._session() as session:
-            result = await session.execute(
+            result: Result[Any] = await session.execute(
                 select(UserTable).order_by(UserTable.created_at.desc())  # type: ignore[attr-defined]
             )
             return list(result.scalars().all())
@@ -186,7 +187,7 @@ class UserDB:
                 await session.commit()
 
     async def _get_user_by_sub(self, session: AsyncSession, oidc_sub: str) -> Optional[UserTable]:
-        result = await session.execute(select(UserTable).where(UserTable.oidc_sub == oidc_sub))
+        result: Result[Any] = await session.execute(select(UserTable).where(UserTable.oidc_sub == oidc_sub))
         return result.scalars().first()
 
     # ── Group CRUD ────────────────────────────────────────────
@@ -194,7 +195,7 @@ class UserDB:
     async def ensure_group(self, name: str, description: Optional[str] = None) -> GroupTable:
         """Ensure a group exists (create if missing). Used during OIDC sync."""
         async with self._session() as session:
-            result = await session.execute(select(GroupTable).where(GroupTable.name == name))
+            result: Result[Any] = await session.execute(select(GroupTable).where(GroupTable.name == name))
             existing = result.scalars().first()
             if existing:
                 return existing
@@ -215,12 +216,12 @@ class UserDB:
 
     async def get_group_by_name(self, name: str) -> Optional[GroupTable]:
         async with self._session() as session:
-            result = await session.execute(select(GroupTable).where(GroupTable.name == name))
+            result: Result[Any] = await session.execute(select(GroupTable).where(GroupTable.name == name))
             return result.scalars().first()
 
     async def list_groups(self) -> list[GroupTable]:
         async with self._session() as session:
-            result = await session.execute(select(GroupTable).order_by(GroupTable.name))
+            result: Result[Any] = await session.execute(select(GroupTable).order_by(GroupTable.name))
             return list(result.scalars().all())
 
     async def update_group_quota(self, group_id: int, quota: RoleQuota) -> Optional[GroupTable]:
@@ -239,7 +240,9 @@ class UserDB:
             group = await session.get(GroupTable, group_id)
             if group:
                 # Remove memberships first
-                links = await session.execute(select(UserGroupLink).where(UserGroupLink.group_id == group_id))
+                links: Result[Any] = await session.execute(
+                    select(UserGroupLink).where(UserGroupLink.group_id == group_id)
+                )
                 for link in links.scalars().all():
                     await session.delete(link)
                 await session.delete(group)
@@ -248,7 +251,7 @@ class UserDB:
 
     async def get_group_member_count(self, group_id: int) -> int:
         async with self._session() as session:
-            result = await session.execute(select(UserGroupLink).where(UserGroupLink.group_id == group_id))
+            result: Result[Any] = await session.execute(select(UserGroupLink).where(UserGroupLink.group_id == group_id))
             return len(result.scalars().all())
 
     # ── User-Group membership ─────────────────────────────────
@@ -278,7 +281,7 @@ class UserDB:
 
     async def get_user_groups(self, user_id: int) -> list[GroupTable]:
         async with self._session() as session:
-            result = await session.execute(
+            result: Result[Any] = await session.execute(
                 select(GroupTable)
                 .join(UserGroupLink, GroupTable.id == UserGroupLink.group_id)  # type: ignore[arg-type]
                 .where(UserGroupLink.user_id == user_id)
@@ -291,7 +294,7 @@ class UserDB:
 
     async def add_user_to_group(self, user_id: int, group_id: int) -> bool:
         async with self._session() as session:
-            result = await session.execute(
+            result: Result[Any] = await session.execute(
                 select(UserGroupLink).where(
                     UserGroupLink.user_id == user_id,
                     UserGroupLink.group_id == group_id,
@@ -306,7 +309,7 @@ class UserDB:
 
     async def remove_user_from_group(self, user_id: int, group_id: int) -> bool:
         async with self._session() as session:
-            result = await session.execute(
+            result: Result[Any] = await session.execute(
                 select(UserGroupLink).where(
                     UserGroupLink.user_id == user_id,
                     UserGroupLink.group_id == group_id,
@@ -361,7 +364,7 @@ class UserDB:
 
     async def delete_user_sessions(self, user_id: int) -> None:
         async with self._session() as session:
-            result = await session.execute(select(SessionTable).where(SessionTable.user_id == user_id))
+            result: Result[Any] = await session.execute(select(SessionTable).where(SessionTable.user_id == user_id))
             for sess in result.scalars().all():
                 await session.delete(sess)
             await session.commit()
@@ -369,7 +372,7 @@ class UserDB:
     async def cleanup_expired_sessions(self) -> int:
         now = datetime.utcnow()
         async with self._session() as session:
-            result = await session.execute(
+            result: Result[Any] = await session.execute(
                 select(SessionTable).where(SessionTable.expires_at < now)  # type: ignore[operator]
             )
             rows = result.scalars().all()
@@ -413,7 +416,9 @@ class UserDB:
     async def cleanup_pending_logins(self, max_age_seconds: int = 600) -> int:
         cutoff = datetime.utcnow() - timedelta(seconds=max_age_seconds)
         async with self._session() as session:
-            result = await session.execute(select(PendingLoginTable).where(PendingLoginTable.created_at < cutoff))
+            result: Result[Any] = await session.execute(
+                select(PendingLoginTable).where(PendingLoginTable.created_at < cutoff)
+            )
             rows = result.scalars().all()
             count = len(rows)
             for p in rows:
