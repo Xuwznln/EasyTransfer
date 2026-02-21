@@ -128,6 +128,7 @@ def create_tus_router(
             retention = "permanent"
 
         # Create upload record
+        owner_id = getattr(getattr(request.state, "user", None), "id", None)
         upload = TusUpload(  # type: ignore[call-arg]
             file_id=file_id,
             filename=tus_metadata.filename,
@@ -145,6 +146,7 @@ def create_tus_router(
             checksum=tus_metadata.checksum,
             retention=retention,
             retention_ttl=retention_ttl,
+            owner_id=owner_id,
         )
 
         # Save to storage
@@ -256,6 +258,26 @@ def create_tus_router(
                 headers=headers,
             )
 
+        # Check user-level quota (if user system is enabled)
+        user_db = getattr(request.app.state, "user_db", None)
+        if user_db and upload.owner_id:
+            user = await user_db.get_user(upload.owner_id)
+            if user:
+                role_quotas = getattr(request.app.state, "parsed_role_quotas", {})
+                effective = await user_db.get_effective_quota(user, role_quotas)
+                if effective.max_storage_size is not None:
+                    if user.storage_used + len(chunk_data) > effective.max_storage_size:
+                        headers = get_tus_headers()
+                        headers[TusHeaders.UPLOAD_OFFSET] = str(upload.offset)
+                        headers["Retry-After"] = "10"
+                        headers["X-User-Storage-Used"] = str(user.storage_used)
+                        headers["X-User-Storage-Max"] = str(effective.max_storage_size)
+                        return Response(
+                            content="User storage quota exceeded. Retry after space is freed.",
+                            status_code=507,
+                            headers=headers,
+                        )
+
         # Check if chunk exceeds remaining size
         if offset + len(chunk_data) > upload.size:
             raise HTTPException(400, "Chunk exceeds upload size")
@@ -278,6 +300,12 @@ def create_tus_router(
 
         # Write chunk to storage
         await storage.write_chunk(file_id, chunk_data, offset)
+
+        # Update user storage_used
+        chunk_len = len(chunk_data)
+        user_db = getattr(request.app.state, "user_db", None)
+        if user_db and upload.owner_id:
+            await user_db.update_storage_used(upload.owner_id, chunk_len)
 
         # Update offset
         new_offset = offset + len(chunk_data)
@@ -313,6 +341,11 @@ def create_tus_router(
         upload = await storage.get_upload(file_id)
         if not upload:
             raise HTTPException(404, "Upload not found")
+
+        # Decrement user storage_used before deleting
+        user_db = getattr(request.app.state, "user_db", None)
+        if user_db and upload.owner_id:
+            await user_db.update_storage_used(upload.owner_id, -upload.offset)
 
         await storage.delete_upload(file_id)
 

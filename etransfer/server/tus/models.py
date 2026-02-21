@@ -108,6 +108,9 @@ class TusUpload(BaseModel):
     )
     download_count: int = Field(0, description="Number of completed downloads")
 
+    # Owner tracking (for user-level quota)
+    owner_id: Optional[int] = Field(None, description="Owning user ID (None = anonymous)")
+
     @property
     def is_complete(self) -> bool:
         """Check if upload is complete."""

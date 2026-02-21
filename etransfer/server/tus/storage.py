@@ -4,7 +4,7 @@ import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import aiofiles  # type: ignore[import-untyped]
 import aiofiles.os  # type: ignore[import-untyped]
@@ -335,6 +335,7 @@ class TusStorage:
             "retention_ttl": upload.retention_ttl,
             "retention_expires_at": (retention_expires_at.isoformat() if retention_expires_at else None),
             "download_count": 0,
+            "owner_id": upload.owner_id,
         }
 
         file_key = self._file_key(file_id)
@@ -431,6 +432,7 @@ class TusStorage:
                     upload.retention_expires_at.isoformat() if upload.retention_expires_at else None
                 ),
                 "download_count": upload.download_count,
+                "owner_id": upload.owner_id,
             }
 
         return None
@@ -475,12 +477,15 @@ class TusStorage:
 
         return {"should_delete": False, "retention": "permanent", "download_count": 0}
 
-    async def cleanup_expired(self) -> int:
+    async def cleanup_expired(self, user_db: Any = None) -> int:
         """Clean up expired uploads and retention-expired files.
 
         Handles:
         - Incomplete uploads past their upload expiration
         - Completed files past their TTL retention_expires_at
+
+        Args:
+            user_db: Optional UserDB instance for updating user storage_used
 
         Returns:
             Number of items cleaned up
@@ -492,6 +497,8 @@ class TusStorage:
         uploads = await self.list_uploads(include_completed=False)
         for upload in uploads:
             if upload.expires_at and upload.expires_at < now:
+                if user_db and upload.owner_id:
+                    await user_db.update_storage_used(upload.owner_id, -upload.offset)
                 await self.delete_upload(upload.file_id)
                 cleaned += 1
 
@@ -504,6 +511,10 @@ class TusStorage:
                     expires = datetime.fromisoformat(expires)
                 if expires < now:
                     file_id = f["file_id"]
+                    owner_id = f.get("owner_id")
+                    file_size = f.get("size", 0)
+                    if user_db and owner_id:
+                        await user_db.update_storage_used(owner_id, -file_size)
                     await self.delete_upload(file_id)
                     cleaned += 1
 

@@ -238,6 +238,12 @@ def create_files_router(storage: TusStorage) -> APIRouter:
             async def _after_download() -> None:
                 result = await storage.record_download(file_id)
                 if result["should_delete"]:
+                    # Decrement user storage_used before deleting
+                    owner_id = info.get("owner_id")
+                    file_size = info.get("size", 0)
+                    user_db = getattr(request.app.state, "user_db", None)
+                    if user_db and owner_id:
+                        await user_db.update_storage_used(owner_id, -file_size)
                     await storage.delete_upload(file_id)
 
             background_tasks.add_task(_after_download)

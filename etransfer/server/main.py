@@ -170,6 +170,7 @@ def create_app(settings: Optional[ServerSettings] = None) -> FastAPI:
         if settings.user_system_enabled:
             _user_db = _create_user_db(settings)
             await _user_db.connect()
+            app.state.user_db = _user_db
             if _oidc_provider:
                 try:
                     await _oidc_provider.discover()
@@ -383,13 +384,13 @@ def _require_admin_access(request: Request) -> None:
 
 async def cleanup_loop(interval: int) -> None:
     """Background task to cleanup expired uploads."""
-    global _storage  # noqa: F824
+    global _storage, _user_db  # noqa: F824
 
     while True:
         try:
             await asyncio.sleep(interval)
             if _storage:
-                cleaned = await _storage.cleanup_expired()
+                cleaned = await _storage.cleanup_expired(user_db=_user_db)
                 if cleaned > 0:
                     print(f"Cleaned up {cleaned} expired uploads")
         except asyncio.CancelledError:
